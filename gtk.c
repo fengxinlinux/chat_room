@@ -25,11 +25,27 @@ void destroy(GtkWidget *widget,gpointer* data)  //退出图形界面
     gtk_main_quit();
 }
 
-void no(GtkWidget*widget,gpointer* dialog)     //否。对调函数
+void zhuce_no(GtkWidget*widget,gpointer* dialog)     //否。登陆回调函数
 {
     gtk_widget_destroy(GTK_WIDGET(dialog));
+} 
+void zhuce_yes()       //是。登陆回调函数
+{
+    gchar* username;
+    gchar* pwd1;
+    gchar* pwd2;
+
+    //获取输入信息
+    username=gtk_entry_get_text(GTK_ENTRY(entry_username));
+    pwd1=gtk_entry_get_text(GTK_ENTRY(entry_pwd1));
+    pwd2=gtk_entry_get_text(GTK_ENTRY(entry_pwd2));
+
+    printf("%s\n",username);
+    printf("%s\n",pwd1);
+    printf("%s\n",pwd2);
+
 }
-void make_dialog()                    //确认注册提示文本框
+/*void make_dialog()                    //确认注册提示文本框
 {
     GtkWidget* dialog;
     GtkWidget* label;
@@ -55,11 +71,11 @@ void make_dialog()                    //确认注册提示文本框
 
     gtk_widget_show_all(dialog);
 
-}
-void zhuce_if()       //注册确定按钮回调函数
+}   */
+/*void zhuce_if()       //注册确定按钮回调函数
 {
     make_dialog();
-}
+}  */
 void zhuce()              /////////注册对话框
 {
     GtkWidget* dialog;
@@ -84,6 +100,10 @@ void zhuce()              /////////注册对话框
     /*生成编辑框*/
     text=gtk_entry_new_with_max_length(20);
     gtk_box_pack_start(GTK_BOX(vbox),text,FALSE,FALSE,0);
+
+    //获取输入信息
+    entry_username=text;
+
     gtk_widget_show(text);
 
 
@@ -99,6 +119,11 @@ void zhuce()              /////////注册对话框
     //设置密码框不可见，用户输入时显示“*”
     gtk_entry_set_visibility(GTK_ENTRY(text),FALSE);
     gtk_entry_set_invisible_char(GTK_ENTRY(text),'*');
+
+
+    //获取输入信息
+    entry_pwd1=text;
+
     gtk_widget_show(text);
 
 
@@ -116,6 +141,8 @@ void zhuce()              /////////注册对话框
     gtk_entry_set_visibility(GTK_ENTRY(text),FALSE);
     gtk_entry_set_invisible_char(GTK_ENTRY(text),'*');
     gtk_widget_show(text);
+    //获取输入信息
+    entry_pwd2=text;
 
 
     gtk_widget_show(vbox);
@@ -127,10 +154,10 @@ void zhuce()              /////////注册对话框
     hbox=GTK_DIALOG(dialog)->action_area;
     button=gtk_button_new_with_label("注册");
     gtk_box_pack_start(GTK_BOX(hbox),button,FALSE,FALSE,0);
-    g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(zhuce_if),dialog);            //////////////连接是回调函数
+    g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(zhuce_yes),dialog);            
     button=gtk_button_new_with_label("取消");
     gtk_box_pack_start(GTK_BOX(hbox),button,FALSE,FALSE,0);
-    g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(no),dialog);
+    g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(zhuce_no),dialog);
 
     gtk_widget_show_all(dialog);
 
@@ -145,9 +172,10 @@ void denglu()  //登陆回调函数
     username=gtk_entry_get_text(GTK_ENTRY(entry_username));
     pwd=gtk_entry_get_text(GTK_ENTRY(entry_pwd1));
 
-    printf("账号%s\n",username);
-    printf("密码%s\n",pwd);
+
+
 }
+
 GtkWidget* makebuttonbox()
 {
     GtkWidget* hbox;
