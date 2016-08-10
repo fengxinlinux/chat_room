@@ -19,15 +19,19 @@
 #include<arpa/inet.h>
 #include<errno.h>
 #include<sys/epoll.h>
+#include<time.h>
 #include"message.h"
 #define  PORT  6666
+#define  EPOLL_SIZE 10       //监听数量
 
 GtkWidget* entry_username;  //记录登陆时文本框中的账号信息
 GtkWidget* entry_pwd;
 
-GtkWidget* dialog1;
+GtkWidget* dialog1,*window1;
 
 int conn_fd;
+time_t timep;    //获取当前时间的变量
+
 
 
 GtkWidget *entry_username1; //记录注册文本框中账号信息
@@ -39,6 +43,13 @@ void my_err(char* string)
     perror(string);
     exit(1);
 }
+char* my_time()    //获取当前时间
+{
+    time(&timep);
+    char* p=ctime(&timep);
+    return p;
+}
+    
 
 void destroy(GtkWidget *widget,gpointer* data)  //退出图形界面
 {
@@ -61,31 +72,77 @@ void zhuce_success(GtkWidget* widget,gpointer* dialog)  //注册成功回调函�
 }
 void zhuce_yes()       //是。注册回调函数
 {
-    gchar* username;
-    gchar* pwd1;
-    gchar* pwd2;
-    struct message* send_buf,*recv_buf;
+    gchar* username=(char*)malloc(sizeof(char)*21);
+    gchar* pwd1=(char*)malloc(sizeof(char)*21);
+    gchar* pwd2=(char*)malloc(sizeof(char)*21);
+    struct message  send_buf,recv_buf;
     int recv_len=sizeof(struct message);
 
     memset(&send_buf,0,sizeof(send_buf));
-    memeset(&recv_buf,0,sizeof(recv_buf));
+    memset(&recv_buf,0,sizeof(recv_buf));
 
     //获取输入信息
-    username=gtk_entry_get_text(GTK_ENTRY(entry_username1));
-    pwd1=gtk_entry_get_text(GTK_ENTRY(entry_pwd1));
-    pwd2=gtk_entry_get_text(GTK_ENTRY(entry_pwd2));
+    strcpy(username,gtk_entry_get_text(GTK_ENTRY(entry_username1)));
+    strcpy(pwd1,gtk_entry_get_text(GTK_ENTRY(entry_pwd1)));
+    strcpy(pwd2,gtk_entry_get_text(GTK_ENTRY(entry_pwd2)));
 
     strcpy(send_buf.username,username);
     strcpy(send_buf.pwd1,pwd1);
     strcpy(send_buf.pwd2,pwd2);
     send_buf.n=0;
 
-    if(send(conn_fd,(struct message*)&send_buf,sizeof(struct message))<0)
+    if(strcmp(pwd1,pwd2)!=0)
+    {
+         GtkWidget* dialog;
+         GtkWidget* label;
+         GtkWidget* button;
+         GtkWidget* vbox;
+         GtkWidget* hbox;
+         dialog=gtk_dialog_new();
+         //向对话框中加入一个文本标签
+         vbox=GTK_DIALOG(dialog)->vbox;
+         label=gtk_label_new("输入的两次密码不匹配");
+         gtk_box_pack_start(GTK_BOX(vbox),label,TRUE,TRUE,30);
+        //向对话框中加入一个按钮     
+        hbox=GTK_DIALOG(dialog)->action_area;   
+        button=gtk_button_new_with_label("确定");
+        gtk_box_pack_start(GTK_BOX(hbox),button,FALSE,FALSE,0);
+        g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(zhuce_fail),dialog);
+
+        gtk_widget_show_all(dialog);
+        return;
+    }
+
+    if(strlen(pwd1)==0||strlen(username)==0)
+    {
+         GtkWidget* dialog;
+         GtkWidget* label;
+         GtkWidget* button;
+         GtkWidget* vbox;
+         GtkWidget* hbox;
+         dialog=gtk_dialog_new();
+         //向对话框中加入一个文本标签
+         vbox=GTK_DIALOG(dialog)->vbox;
+         label=gtk_label_new("账号或密码不能为空");
+         gtk_box_pack_start(GTK_BOX(vbox),label,TRUE,TRUE,30);
+        //向对话框中加入一个按钮     
+         hbox=GTK_DIALOG(dialog)->action_area;   
+        button=gtk_button_new_with_label("确定");
+        gtk_box_pack_start(GTK_BOX(hbox),button,FALSE,FALSE,0);
+        g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(zhuce_fail),dialog);
+        gtk_widget_show_all(dialog);
+        return;
+        
+    }
+    
+
+
+    if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
     {
         printf("服务器未响应\n");
         return;
     }
-    if(recv(conn_fd,(struct message*)&recv_buf,&recv_len)<0)
+    if(recv(conn_fd,&recv_buf,recv_len,0)<0)
     {
         printf("从服务器接受数据失败\n");
         return;
@@ -237,7 +294,8 @@ void denglu_fail(GtkWidget* widget,gpointer* dialog)    //登陆失败回调函�
 void denglu_success(GtkWidget* widget,gpointer* dialog)  //登陆成功回调函数
 {
     gtk_widget_destroy(GTK_WIDGET(dialog));
-    destroy();
+    gtk_widget_destroy(window1);   
+    gtk_main_quit();
 }
 void denglu()  //登陆回调函数
 {
@@ -246,30 +304,62 @@ void denglu()  //登陆回调函数
     struct message send_buf;
     struct message recv_buf;
 
+    username=(char*)malloc(sizeof(char)*21);
+    pwd=(char*)malloc(sizeof(char)*21);
+
+
+
+
     memset(&send_buf,0,sizeof(struct message));
     memset(&recv_buf,0,sizeof(struct message));
-
+   
 
     //获取输入信息
-    username=gtk_entry_get_text(GTK_ENTRY(entry_username));
-    pwd=gtk_entry_get_text(GTK_ENTRY(entry_pwd));
-
+    strcpy(username,gtk_entry_get_text(GTK_ENTRY(entry_username)));
+    strcpy(pwd,gtk_entry_get_text(GTK_ENTRY(entry_pwd)));
+   
     strcpy(send_buf.username,username);
-    strcpy(recv_buf.pwd1,pwd);
+    strcpy(send_buf.pwd1,pwd);
     send_buf.n=1;
+   
+    if(strlen(send_buf.username)==0||strlen(send_buf.pwd1)==0)
+    {
+         GtkWidget* dialog;
+         GtkWidget* label;
+         GtkWidget* button;
+         GtkWidget* vbox;
+         GtkWidget* hbox;
+         dialog=gtk_dialog_new();
+        //向对话框中加入一个文本标签
+         vbox=GTK_DIALOG(dialog)->vbox;
+        label=gtk_label_new("账号或密码不能为空");
+        gtk_box_pack_start(GTK_BOX(vbox),label,TRUE,TRUE,30);
+        //向对话框中加入一个按钮     
+        hbox=GTK_DIALOG(dialog)->action_area;   
+        button=gtk_button_new_with_label("确定");
+        gtk_box_pack_start(GTK_BOX(hbox),button,FALSE,FALSE,0);
+        g_signal_connect(GTK_OBJECT(button),"clicked",GTK_SIGNAL_FUNC(denglu_fail),dialog);
+        gtk_widget_show_all(dialog);
+        return;
+    }
 
-    if(send(conn_fd,(struct message*)&send_buf,sizeof(struct message))<0)
+
+    
+    
+    if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
     {
         printf("服务器未响应\n");
         return;
     }
+    
     int recv_len=sizeof(struct message);
-    if(recv(conn_fd,(struct message*)&recv_buf,&recv_len)<0)
+    if(recv(conn_fd,&recv_buf,recv_len,0)<0)
     {
         printf("从服务器接受数据失败\n");
         return;
 
     }
+    
     if(recv_buf.n==-1)   //登陆失败
     {
         GtkWidget* dialog;
@@ -318,7 +408,7 @@ void denglu()  //登陆回调函数
 
 
        gtk_widget_show_all(dialog);
-       sys("clear");  //清屏
+       system("clear");  //清屏
     
    }
 }
@@ -394,7 +484,35 @@ GtkWidget* maketextentry()
 
 
 }
+int  explain_buf(char* buf,char buflist[5][21])       //解析用户输入的命令
+{
+    int i=0,j=0;
+    char* p=buf;
+    int n=1;  //记录命令格式是否正确
+    while(*p!='\0')
+    {
+        if(*p!=' '&&i<5)
+        {
+            buflist[i][j++]=*p;
+            p++;
+            if(j==20)
+            {
+                n=0;
+                break;
+            }
+        }
+        else
+        {
+            buflist[i][j]='\0';
+            p++;
+            i++;
+            j=0;
+        }
+    }
+    buflist[i][j]='\0';
+    return n;
 
+}
 
 int main(int argc,char** argv)
 {
@@ -402,10 +520,16 @@ int main(int argc,char** argv)
     GtkWidget* table;
     GtkWidget* textentry;
     GtkWidget* buttonbox;
+
+
     
-    struct sockaddr_in serv_adrr;
+    struct sockaddr_in serv_addr;
     int serv_port;
     int i;
+    int epollfd;  //epoll描述符
+    struct epoll_event event;
+    struct epoll_event* events=(struct epoll_event*)malloc(sizeof(struct epoll_event)*EPOLL_SIZE);
+
 
     if(argc!=3)
     {
@@ -414,16 +538,20 @@ int main(int argc,char** argv)
     }
 
 
+
+
     //初始化服务器地址结构
-    memset(&serv_adrr,0,sizeof(struct sockaddr_in));
+    memset(&serv_addr,0,sizeof(struct sockaddr_in));
     serv_addr.sin_family=AF_INET;
     serv_addr.sin_port=htons(PORT);
+
 
     //从命令行服务器地址
     for(i=0;i<argc;i++)
     {
-        if(strcmp("-a",argv[i]==0))
+        if(strcmp("-a",argv[i])==0)
         {
+            
             if(inet_aton(argv[i+1],&serv_addr.sin_addr)==0)
             {
                 printf("invaild server ip address\n");
@@ -442,17 +570,18 @@ int main(int argc,char** argv)
 
     //创建一个TCP套接字
     conn_fd=socket(AF_INET,SOCK_STREAM,0);
+
+
     if(conn_fd<0)
     {
         my_err("connect");
     }
 
     //向服务器发送连接请求
-    if(connect(conn_fd,(struct sockaddr*)&serv_adrr,sizeof(struct sockaddr))<0)
+    if(connect(conn_fd,(struct sockaddr*)&serv_addr,sizeof(struct sockaddr))<0)
     {
         my_err("connect");
     }
-
 
 
     /*创建主窗口*/
@@ -461,6 +590,7 @@ int main(int argc,char** argv)
     g_signal_connect(GTK_OBJECT(window),"destroy",GTK_SIGNAL_FUNC(destroy),NULL);
     gtk_container_border_width(GTK_CONTAINER(window),30); //主窗口大小
     gtk_widget_show(window);
+    window1=window; 
 
     /*创建table控件*/
     table=gtk_table_new(2,2,FALSE);
@@ -481,6 +611,81 @@ int main(int argc,char** argv)
 
 
     gtk_main();
+
+
+
+    //创建监听描述符epoll,并将标准输入和conn_fd套接字加入监听列表
+    epollfd=epoll_create(EPOLL_SIZE);
+    if(epollfd==-1)
+    {
+        my_err("epoll_create");
+        
+    }
+    event.events=EPOLLIN;      //将标准输入加入
+    event.data.fd=0;
+    if(epoll_ctl(epollfd,EPOLL_CTL_ADD,0,&event)<0)
+    {
+        my_err("epoll_ctl");
+    }
+
+    event.events=EPOLLIN|EPOLLRDHUP;  //将连接套接字加入
+    event.data.fd=conn_fd;
+    if(epoll_ctl(epollfd,EPOLL_CTL_ADD,conn_fd,&event)<0)
+    {
+        my_err("epoll_ctl");
+    }
+    
+    char buf[101];  //储存用户输入的命令
+    struct message send_buf;
+    struct message recv_buf;
+    char buflist[5][21];  //储存将命令分解
+    for(int i=0;i<5;i++)
+    strcpy(buflist[i],"");   //初始化数组
+
+    while(1)
+    {
+        int sum=0,i;
+        sum=epoll_wait(epollfd,events,EPOLL_SIZE,-1);
+
+        if(sum<0)
+        {
+            my_err("epoll_wait");
+        }
+
+        for(i=0;i<sum;i++)
+        {
+            if(events[i].data.fd==0)   //标准输入可读
+            {
+                int j=0;
+                while(j!=101&&(buf[j++]=getchar())!='\n');
+                if(j==101)
+                {
+                    printf("输入的字符过长,请重新输入\n");
+                    continue;
+                }
+                else
+                {
+                    buf[--j]='\0';
+                    explain_buf(buf,buflist);
+                    for(i=0;i<5;i++)
+                    printf("%s\n",buflist[i]);
+                    
+                }   
+            }
+            if(events[i].events&EPOLLIN)  //连接套接字可读
+            {
+                
+            }
+            if(events[i].events&EPOLLRDHUP)  //与服务器连接断开
+            {
+                printf("\n与服务器连接断开，程序退出\n");
+                exit(0);
+            }
+        }
+    }
+
+
+   
 
 }
 
