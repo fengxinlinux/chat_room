@@ -56,17 +56,20 @@ cli_data* create()  //创建一个带头节点的链表，储存已连接的用�
     head->next=NULL;
     return head;
 }
-cli_data*  insert(cli_data* head)   //插入链表
+cli_data*  insert()   //插入链表
 {
+
     cli_data* temp=head;
     cli_data* new;
     new=(cli_data*)malloc(sizeof(cli_data));
     new->next=NULL;
+    
     while(temp->next!=NULL)
     {
         temp=temp->next;
-    }
+    }  
     temp->next=new;
+
     return new;
 
 }
@@ -163,7 +166,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         if(send_buf.n==11)
         {
           printf("a user is login,username:%s,time:%s",send_buf.username,my_time()); 
-          temp=insert(head);
+          temp=insert();
           temp->cli_fd=conn_fd;
           strcpy(temp->username,send_buf.username);
         }
@@ -180,7 +183,6 @@ int main()
     int epollfd;
     struct epoll_event  event;
     struct epoll_event*  events;
-    struct cli_data* head=NULL,*temp=NULL;
     
 
     //创建一个套接字
