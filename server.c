@@ -109,7 +109,10 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
     struct user user_data;
     int ret=0;  //用来表示注册账号是否存在或账号密码信息是否匹配
     FILE* fp;
-    cli_data* temp;
+    cli_data* temp; //在线用户链表临时指针
+    char path[256];   //储存文件路径
+    char friendname[21];  //储存用户好友用户名
+    int i=0;
     fp=fopen("passwd.txt","a+");
     fclose(fp);
     switch(n)
@@ -139,7 +142,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             }
             close(fd);
             
-            char path[256];
+        
             printf("a user register,username:%s,time:%s",user_data.username,my_time());
             
             mkdir(user_data.username,07777);  //创建用户所属目录
@@ -160,6 +163,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             my_err("send");
         }
         break;
+
         case 1:  //登陆
         if((fd=open("passwd.txt",O_RDONLY))<0)
         {
@@ -193,8 +197,10 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         }
         
         break;
+
         case 2:  //发送文本信息
         break;
+
         case 3:   //添加好友
         temp=head->next;
 
@@ -211,7 +217,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         if(ret)
         {
             
-            char path[256];
+            
             int to_fd=temp->cli_fd;        //向另一用户征求是否同意添加好友
 
 
@@ -251,6 +257,59 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         {
             printf("send error\n");
         }
+        break;
+
+        case 4:   //查看好友列表
+        my_path(recv_buf.username,recv_buf.username,path);  //连接用户好友文件路径
+        fd=open(path,O_RDONLY);
+        while(read(fd,send_buf.friendname[i++],sizeof(recv_buf.username))!=0);
+        send_buf.friendname[i][0]='\0';
+
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf("send error\n");
+            
+        }
+        break;
+        
+        case 44:     //查看在线好友
+        my_path(recv_buf.username,recv_buf.username,path);  //连接用户好友文件路径
+        fd=open(path,O_RDONLY);
+        
+        
+        while(read(fd,friendname,sizeof(friendname))!=0)
+        {
+            int n=0;
+            temp=head->next;
+            while(temp!=NULL)
+            {
+                if(strcmp(temp->username,friendname)==0)
+                {
+                    n=1;
+                    break;
+                }
+                else
+                temp=temp->next;
+            }
+            if(n)
+            {
+                strcpy(send_buf.friendname[i++],friendname);
+            }
+            
+        }
+        send_buf.friendname[i][0]='\0';
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+           printf("send error\n");                                                    
+        }
+        break;
+
+        
+
+
+
+
+    
 
     }
 }
