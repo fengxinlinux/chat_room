@@ -115,7 +115,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
     switch(n)
     {
         case 0: //注册
-        if((fd=open("passwd.txt",O_RDWR|O_APPEND,777))<0)
+        if((fd=open("passwd.txt",O_RDWR|O_APPEND))<0)
         {
             my_err("open");
         }
@@ -142,9 +142,9 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             char path[256];
             printf("a user register,username:%s,time:%s",user_data.username,my_time());
             
-            mkdir(user_data.username,0744);  //创建用户所属目录
+            mkdir(user_data.username,07777);  //创建用户所属目录
             my_path(user_data.username,user_data.username,path);
-            fd=open(path,O_RDWR|O_CREAT|O_APPEND);
+            fd=open(path,O_RDWR|O_CREAT|O_APPEND,0777);
             close(fd);
             if(fd<0)
             {
@@ -199,6 +199,13 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         temp=head->next;
         while(temp!=NULL)
         {
+            printf("fd=%d,username=%s\n",temp->cli_fd,temp->username);/////////////
+            temp=temp->next;
+        }
+        temp=head->next; ////////
+        while(temp!=NULL)
+        {
+            printf("b\n");  /////////
             if(strcmp(temp->username,send_buf.to)==0)  //找到指定在线好友
             { 
                ret=1;
@@ -208,11 +215,16 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         }
         if(ret)
         {
+            printf("1\n");    //////////////////
             char path[256];
             int to_fd=temp->cli_fd;        //向另一用户征求是否同意添加好友
+
+            printf("to_fd=%d\n",to_fd);   ///////
+
             send(to_fd,&send_buf,sizeof(struct message),0);
             recv(to_fd,&send_buf,sizeof(struct message),0);
-            
+            printf("2\n");      /////////////////////
+
             if(send_buf.n==3)
             {
                 my_path(send_buf.from,send_buf.from,path);    //写入用户好友文件
@@ -224,15 +236,16 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                 }
                 close(fd);
                my_path(send_buf.from,send_buf.to,path);   //创建用户与该好友的聊天记录文件
-               fd=open(path,O_RDWR|O_CREAT|O_TRUNC);
+               fd=open(path,O_RDWR|O_CREAT|O_TRUNC,0777);
                close(fd);
-
+            
+                printf("3\n"); /////////////////
                 my_path(send_buf.to,send_buf.to,path);    //写入另一用户好友文件
                 fd=open(path,O_RDWR|O_APPEND);
                 write(fd,send_buf.from,sizeof(send_buf.from));
                 close(fd);
                 my_path(send_buf.to,send_buf.from,path);  //创建另一用户与该好友的聊天记录文件
-                fd=open(path,O_RDWR|O_CREAT|O_TRUNC);
+                fd=open(path,O_RDWR|O_CREAT|O_TRUNC,0777);
                 close(fd);
 
 
