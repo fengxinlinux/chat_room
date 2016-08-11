@@ -422,6 +422,8 @@ void denglu()  //登陆回调函数
 
        gtk_widget_show_all(dialog);
        system("clear");  //清屏
+       system("clear");
+       system("clear");
     
    }
 }
@@ -502,6 +504,11 @@ int  explain_buf(char* buf,char buflist[5][21])       //解析用户输入的命
     int i=0,j=0;
     char* p=buf;
     int n=1;  //记录命令格式是否正确
+
+    for(i=0;i<5;i++)   //初始化
+    buflist[i][0]='\0';
+    i=0;
+
     while(*p!='\0')
     {
         if(*p!=' '&&i<5)
@@ -576,9 +583,29 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             return;
         }
     }
+    else if(strcmp(buflist[0],"ls")==0)  //显示好友
+    {
+        strcpy(send_buf.username,username1);
+        if(strcmp(buflist[1],"-a")==0)  //显示所有好友
+        {
+            send_buf.n=4;
+        }
+        else
+        {
+            send_buf.n=44;
+        }
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf("服务器未响应\n");
+            return;
+        }
+    }
 
 
-
+    else if(strcmp(buflist[0],"clear")==0)  //清屏
+    {
+        system("clear");
+    }
     else
     {
         printf("未找到该命令\n");
@@ -610,6 +637,27 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
     {
         printf("好友不在线或对方拒绝添加您为好友\n");
     }
+    if(n==4)  //显示所有好友
+    {
+        int i=0;
+        printf("所有好友:\n");
+        while(strlen(recv_buf.friendname[i])!=0)
+        {
+            printf("%s\n",recv_buf.friendname[i]);
+            i++;
+        }
+
+    }
+    if(n==44) //显示在线好友
+    {
+        int i=0;
+        printf("在线好友:\n");
+        while(strlen(recv_buf.friendname[i])!=0)
+        {
+            printf("%s\n",recv_buf.friendname[i]);
+            i++;        
+        }
+    }
 
 }
 void recv_pthread()   //接收服务器数据线程
@@ -629,6 +677,10 @@ void recv_pthread()   //接收服务器数据线程
         do_recv(recv_buf);
 
     }
+}
+void serv_quit()  //监控服务器退出
+{
+    
 }
 int main(int argc,char** argv)
 {
