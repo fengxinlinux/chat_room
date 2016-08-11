@@ -20,9 +20,12 @@
 #include<errno.h>
 #include<sys/epoll.h>
 #include<time.h>
+#include<signal.h>
 #include"message.h"
 #define  PORT  6666
 #define  EPOLL_SIZE 10       //监听数量
+
+
 
 GtkWidget* entry_username;  //记录登陆时文本框中的账号信息
 GtkWidget* entry_pwd;
@@ -31,6 +34,7 @@ GtkWidget* dialog1,*window1;
 
 int conn_fd;
 time_t timep;    //获取当前时间的变量
+char username[21];   //记录当前客户端用户名
 
 
 
@@ -317,6 +321,9 @@ void denglu()  //登陆回调函数
     //获取输入信息
     strcpy(username,gtk_entry_get_text(GTK_ENTRY(entry_username)));
     strcpy(pwd,gtk_entry_get_text(GTK_ENTRY(entry_pwd)));
+
+
+    strcpy(send_buf.username,username);
    
     strcpy(send_buf.username,username);
     strcpy(send_buf.pwd1,pwd);
@@ -514,6 +521,48 @@ int  explain_buf(char* buf,char buflist[5][21])       //解析用户输入的命
 
 }
 
+void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
+{
+    struct message send_buf,recv_buf;
+    memset(&send_buf,0,sizeof(struct message));
+    memset(&recv_buf,0,sizeof(struct message));
+
+
+    if(strcmp(buflist[0],"add")==0)    //添加好友命令
+    {
+        send_buf.n=3;
+        strcpy(send_buf.to,buflist[1]);
+        strcpy(send_buf.from,username);
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf("服务器未响应\n");
+            return;
+        }
+        if(recv(conn_fd,&recv_buf,sizeof(struct message),0)<0)
+        {
+            printf("服务器未响应\n");
+            return;
+        }
+        if(recv_buf.n==33)
+        {
+            printf("添加好友成功\n");
+        }
+        else if(recv_buf.n==-3)
+        {
+            printf("添加好友失败，好友不在线或对方拒绝添加您为好友\n");
+        }
+    }
+
+
+    else
+    {
+        printf("未找到该命令\n");
+        return;
+    }
+
+
+}
+
 int main(int argc,char** argv)
 {
     GtkWidget* window;
@@ -584,6 +633,9 @@ int main(int argc,char** argv)
     }
 
 
+    //close(conn_fd);
+
+
     /*创建主窗口*/
     gtk_init(&argc,&argv);
     window=gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -639,8 +691,10 @@ int main(int argc,char** argv)
     struct message send_buf;
     struct message recv_buf;
     char buflist[5][21];  //储存将命令分解
-    for(int i=0;i<5;i++)
-    strcpy(buflist[i],"");   //初始化数组
+
+    memset(&send_buf,0,sizeof(struct message));
+    memset(&recv_buf,0,sizeof(struct message));
+   
 
     while(1)
     {
@@ -654,6 +708,19 @@ int main(int argc,char** argv)
 
         for(i=0;i<sum;i++)
         {
+            memset(buf,0,sizeof(buf));   //初始化
+            for(i=0;i<5;i++)
+            buflist[i][0]='\0';
+            
+            if(events[i].events&EPOLLRDHUP)  //与服务器连接断开
+            {
+                printf("\n与服务器连接断开，程序退出\n");
+                exit(0);
+            }
+            if((events[i].events&EPOLLIN)&&events[i].data.fd!=0)  //连接套接字可读
+            {
+
+            }
             if(events[i].data.fd==0)   //标准输入可读
             {
                 int j=0;
@@ -666,23 +733,22 @@ int main(int argc,char** argv)
                 else
                 {
                     buf[--j]='\0';
-                    explain_buf(buf,buflist);
-                    for(i=0;i<5;i++)
-                    printf("%s\n",buflist[i]);
-                    
-                }   
-            }
-            if(events[i].events&EPOLLIN)  //连接套接字可读
-            {
+                   if(explain_buf(buf,buflist)==0)
+                    {
+                       printf("输入的命令格式不正确，请重新输入\n");
+                      continue;
+                    }
+                    do_buf(buflist,conn_fd);
                 
+                    
+                } 
+                
+               continue;
             }
-            if(events[i].events&EPOLLRDHUP)  //与服务器连接断开
-            {
-                printf("\n与服务器连接断开，程序退出\n");
-                exit(0);
-            }
+                
         }
     }
+    close(conn_fd);
 
 
    
