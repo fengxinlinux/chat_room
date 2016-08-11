@@ -34,7 +34,7 @@ GtkWidget* dialog1,*window1;
 
 int conn_fd;
 time_t timep;    //获取当前时间的变量
-char username[21];   //记录当前客户端用户名
+char username1[21];   //记录当前客户端用户名
 
 
 
@@ -322,9 +322,13 @@ void denglu()  //登陆回调函数
     strcpy(username,gtk_entry_get_text(GTK_ENTRY(entry_username)));
     strcpy(pwd,gtk_entry_get_text(GTK_ENTRY(entry_pwd)));
 
+ 
+  
+    strcpy(username1,username);
+    
+    
 
-    strcpy(send_buf.username,username);
-   
+
     strcpy(send_buf.username,username);
     strcpy(send_buf.pwd1,pwd);
     send_buf.n=1;
@@ -532,7 +536,13 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
     {
         send_buf.n=3;
         strcpy(send_buf.to,buflist[1]);
-        strcpy(send_buf.from,username);
+        strcpy(send_buf.from,username1);
+    
+        if(strcmp(send_buf.from,send_buf.to)==0)   
+        {
+            printf("不能添加自己为好友\n");
+            return;
+        }
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf("服务器未响应\n");
@@ -562,7 +572,50 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
 
 
 }
-
+void do_recv(struct message recv_buf,int conn_fd)    //执行处理从服务器发来的数据
+{
+    int n=recv_buf.n;
+    struct message send_buf=recv_buf;
+    char username[21];  
+    if(n==3)   //有用户申请添加好友
+    {
+        char choice[10];
+        int i=0;
+        strcpy(username,recv_buf.from);
+        printf("%s请求添加您为好友，是否同意？yes/no.\n",username);
+        while(1)
+        {
+            while((choice[i]=getchar())!='\n')
+            {
+                if(i==9)
+                {
+                    printf("输入的选项错误,请重新输入\n");
+                    i=0;
+                    continue;
+                }
+                i++;
+            }
+            choice[i]='\0';
+            if(strcpy(choice,"yes")==0)   //添加好友成功
+            {
+                send_buf.n=33;
+                break;
+            }
+            else if(strcpy(choice,"no")==0) //添加好友失败
+            {
+                send_buf.n=-3;
+                break;
+            }
+            else
+            continue;
+        }
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf("服务器未响应\n");
+            return;
+        }
+    }
+}
 int main(int argc,char** argv)
 {
     GtkWidget* window;
@@ -587,7 +640,7 @@ int main(int argc,char** argv)
     }
 
 
-
+    
 
     //初始化服务器地址结构
     memset(&serv_addr,0,sizeof(struct sockaddr_in));
@@ -633,7 +686,6 @@ int main(int argc,char** argv)
     }
 
 
-    //close(conn_fd);
 
 
     /*创建主窗口*/
@@ -717,10 +769,7 @@ int main(int argc,char** argv)
                 printf("\n与服务器连接断开，程序退出\n");
                 exit(0);
             }
-            if((events[i].events&EPOLLIN)&&events[i].data.fd!=0)  //连接套接字可读
-            {
-
-            }
+        
             if(events[i].data.fd==0)   //标准输入可读
             {
                 int j=0;
@@ -741,10 +790,23 @@ int main(int argc,char** argv)
                     do_buf(buflist,conn_fd);
                 
                     
-                } 
-                
-               continue;
+                }
             }
+            if((events[i].events&EPOLLIN)&&events[i].data.fd!=0)  //连接套接字可读
+            {
+                if(recv(conn_fd,&recv_buf,sizeof(struct message),0)<0)
+                {
+                
+                    printf("从服务器接受数据失败\n");
+                    
+                }
+                printf("1\n"); ///////////////
+                do_recv(recv_buf,conn_fd);
+
+            }
+                
+        
+            
                 
         }
     }
