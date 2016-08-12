@@ -590,9 +590,14 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         {
             send_buf.n=4;
         }
-        else
+        else if(strlen(buflist[1])==0)
         {
             send_buf.n=44;
+        }
+        else
+        {
+            printf("未找到该命令\n");
+            return;
         }
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
@@ -602,7 +607,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
     }
 
 
-    else if(strcmp(buflist[0],"clear")==0)  //清屏
+    else if(strcmp(buflist[0],"clear")==0&&strlen(buflist[1])==0)  //清屏
     {
         system("clear");
     }
@@ -680,7 +685,27 @@ void recv_pthread()   //接收服务器数据线程
 }
 void serv_quit()  //监控服务器退出
 {
-    
+    int epollfd=epoll_create(1);
+    struct epoll_event event;
+    struct epoll_event events[1];
+    event.data.fd=conn_fd;
+    event.events=EPOLLRDHUP;
+    if(epoll_ctl(epollfd,EPOLL_CTL_ADD,conn_fd,&event)<0)
+    {
+        printf("epoll_ctl error");
+        pthread_exit(NULL);
+    }
+    while(1)
+    {
+        epoll_wait(epollfd,events,1,-1);
+        if(events[0].events&EPOLLRDHUP)
+        {
+            printf("服务器退出，程序退出\n");
+            //shutdown(conn_fd,2);
+          //  close(conn_fd);
+            exit(1);
+        }
+    }
 }
 int main(int argc,char** argv)
 {
@@ -694,9 +719,6 @@ int main(int argc,char** argv)
     struct sockaddr_in serv_addr;
     int serv_port;
     int i;
-    int epollfd;  //epoll描述符
-    struct epoll_event event;
-    struct epoll_event* events=(struct epoll_event*)malloc(sizeof(struct epoll_event)*EPOLL_SIZE);
 
 
     if(argc!=3)
@@ -790,12 +812,13 @@ int main(int argc,char** argv)
     struct message send_buf;
     struct message recv_buf;
     char buflist[5][21];  //储存将命令分解
-    pthread_t thid; 
+    pthread_t thid,thid2; 
 
     memset(&send_buf,0,sizeof(struct message));
     memset(&recv_buf,0,sizeof(struct message));
 
     pthread_create(&thid,NULL,(void*)recv_pthread,NULL);
+    pthread_create(&thid2,NULL,(void*)serv_quit,NULL);
 
     while(1)
     {
