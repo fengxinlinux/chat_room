@@ -35,6 +35,8 @@ GtkWidget* dialog1,*window1;
 int conn_fd;
 time_t timep;    //获取当前时间的变量
 char username1[21];   //记录当前客户端用户名
+char from[21]; //记录发送信息的用户名
+char to[21];  //记录被发送信息的用户名
 
 
 
@@ -420,6 +422,8 @@ void denglu()  //登陆回调函数
 
        gtk_widget_show_all(dialog);
        system("clear");  //清屏
+       system("clear");
+       system("clear");
     
    }
 }
@@ -500,6 +504,11 @@ int  explain_buf(char* buf,char buflist[5][21])       //解析用户输入的命
     int i=0,j=0;
     char* p=buf;
     int n=1;  //记录命令格式是否正确
+
+    for(i=0;i<5;i++)   //初始化
+    buflist[i][0]='\0';
+    i=0;
+
     while(*p!='\0')
     {
         if(*p!=' '&&i<5)
@@ -548,22 +557,60 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             printf("服务器未响应\n");
             return;
         }
-        if(recv(conn_fd,&recv_buf,sizeof(struct message),0)<0)
+    }
+
+   else if(strcmp(buflist[0],"yes")==0)   //确认添加好友命令
+    {
+        send_buf.n=33;
+        strcpy(send_buf.from,from);
+        strcpy(send_buf.to,to);
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf("服务器未响应\n");
             return;
         }
-        if(recv_buf.n==33)
+
+    }
+    else if(strcmp(buflist[0],"no")==0)   //拒绝添加好友命令
+    {
+        send_buf.n=-3;
+        strcpy(send_buf.from,from);
+        strcpy(send_buf.to,to);
+
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            printf("添加好友成功\n");
+            printf("服务器未响应\n");
+            return;
         }
-        else if(recv_buf.n==-3)
+    }
+    else if(strcmp(buflist[0],"ls")==0)  //显示好友
+    {
+        strcpy(send_buf.username,username1);
+        if(strcmp(buflist[1],"-a")==0)  //显示所有好友
         {
-            printf("添加好友失败，好友不在线或对方拒绝添加您为好友\n");
+            send_buf.n=4;
+        }
+        else if(strlen(buflist[1])==0)
+        {
+            send_buf.n=44;
+        }
+        else
+        {
+            printf("未找到该命令\n");
+            return;
+        }
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf("服务器未响应\n");
+            return;
         }
     }
 
 
+    else if(strcmp(buflist[0],"clear")==0&&strlen(buflist[1])==0)  //清屏
+    {
+        system("clear");
+    }
     else
     {
         printf("未找到该命令\n");
@@ -572,7 +619,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
 
 
 }
-void do_recv(struct message recv_buf,int conn_fd)    //执行处理从服务器发来的数据
+void do_recv(struct message recv_buf)    //执行处理从服务器发来的数据
 {
     int n=recv_buf.n;
     struct message send_buf=recv_buf;
@@ -582,37 +629,87 @@ void do_recv(struct message recv_buf,int conn_fd)    //执行处理从服务器�
         char choice[10];
         int i=0;
         strcpy(username,recv_buf.from);
+        strcpy(from,recv_buf.from);
+        strcpy(to,recv_buf.to);
         printf("%s请求添加您为好友，是否同意？yes/no.\n",username);
-        while(1)
+      
+    }
+    if(n==33)
+    {
+        printf("添加好友成功\n");
+    }
+    if(n==-3)
+    {
+        printf("好友不在线或对方拒绝添加您为好友\n");
+    }
+    if(n==4)  //显示所有好友
+    {
+        int i=0;
+        printf("所有好友:\n");
+        while(strlen(recv_buf.friendname[i])!=0)
         {
-            while((choice[i]=getchar())!='\n')
-            {
-                if(i==9)
-                {
-                    printf("输入的选项错误,请重新输入\n");
-                    i=0;
-                    continue;
-                }
-                i++;
-            }
-            choice[i]='\0';
-            if(strcpy(choice,"yes")==0)   //添加好友成功
-            {
-                send_buf.n=33;
-                break;
-            }
-            else if(strcpy(choice,"no")==0) //添加好友失败
-            {
-                send_buf.n=-3;
-                break;
-            }
-            else
+            printf("%s\n",recv_buf.friendname[i]);
+            i++;
+        }
+
+    }
+    if(n==44) //显示在线好友
+    {
+        int i=0;
+        printf("在线好友:\n");
+        while(strlen(recv_buf.friendname[i])!=0)
+        {
+            printf("%s\n",recv_buf.friendname[i]);
+            i++;        
+        }
+    }
+
+}
+void recv_pthread()   //接收服务器数据线程
+{
+    struct message send_buf,recv_buf;
+    int ret; 
+    memset(&send_buf,0,sizeof(struct message));
+    memset(&recv_buf,0,sizeof(struct message));
+
+    while(1)
+    {
+
+        if((ret=recv(conn_fd,&recv_buf,sizeof(struct message),0))==0)
+        {
+            printf("从服务器接收数据失败\n");
+            exit(1);
+        }
+        else if(ret<0)
+        {
+            printf("从服务器接受数据失败\n");
             continue;
         }
-        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        do_recv(recv_buf);
+
+    }
+}
+void serv_quit()  //监控服务器退出
+{
+    int epollfd=epoll_create(1);
+    struct epoll_event event;
+    struct epoll_event events[1];
+    event.data.fd=conn_fd;
+    event.events=EPOLLRDHUP;
+    if(epoll_ctl(epollfd,EPOLL_CTL_ADD,conn_fd,&event)<0)
+    {
+        printf("epoll_ctl error");
+        pthread_exit(NULL);
+    }
+    while(1)
+    {
+        epoll_wait(epollfd,events,1,-1);
+        if(events[0].events&EPOLLRDHUP)
         {
-            printf("服务器未响应\n");
-            return;
+            printf("服务器退出，程序退出\n");
+            //shutdown(conn_fd,2);
+          //  close(conn_fd);
+            exit(1);
         }
     }
 }
@@ -628,9 +725,6 @@ int main(int argc,char** argv)
     struct sockaddr_in serv_addr;
     int serv_port;
     int i;
-    int epollfd;  //epoll描述符
-    struct epoll_event event;
-    struct epoll_event* events=(struct epoll_event*)malloc(sizeof(struct epoll_event)*EPOLL_SIZE);
 
 
     if(argc!=3)
@@ -718,100 +812,42 @@ int main(int argc,char** argv)
 
 
 
-    //创建监听描述符epoll,并将标准输入和conn_fd套接字加入监听列表
-    epollfd=epoll_create(EPOLL_SIZE);
-    if(epollfd==-1)
-    {
-        my_err("epoll_create");
-        
-    }
-    event.events=EPOLLIN;      //将标准输入加入
-    event.data.fd=0;
-    if(epoll_ctl(epollfd,EPOLL_CTL_ADD,0,&event)<0)
-    {
-        my_err("epoll_ctl");
-    }
-
-    event.events=EPOLLIN|EPOLLRDHUP;  //将连接套接字加入
-    event.data.fd=conn_fd;
-    if(epoll_ctl(epollfd,EPOLL_CTL_ADD,conn_fd,&event)<0)
-    {
-        my_err("epoll_ctl");
-    }
+    
     
     char buf[101];  //储存用户输入的命令
     struct message send_buf;
     struct message recv_buf;
     char buflist[5][21];  //储存将命令分解
+    pthread_t thid,thid2; 
 
     memset(&send_buf,0,sizeof(struct message));
     memset(&recv_buf,0,sizeof(struct message));
-   
+
+    pthread_create(&thid,NULL,(void*)recv_pthread,NULL);
+    pthread_create(&thid2,NULL,(void*)serv_quit,NULL);
 
     while(1)
     {
-        int sum=0,i;
-        sum=epoll_wait(epollfd,events,EPOLL_SIZE,-1);
-
-        if(sum<0)
+        int j=0;
+        while(j!=101&&(buf[j++]=getchar())!='\n');
+        if(j==101)
         {
-            my_err("epoll_wait");
+           printf("输入的字符过长,请重新输入\n");
+           continue;   
         }
-
-        for(i=0;i<sum;i++)
+        else
         {
-            memset(buf,0,sizeof(buf));   //初始化
-            for(i=0;i<5;i++)
-            buflist[i][0]='\0';
-            
-            if(events[i].events&EPOLLRDHUP)  //与服务器连接断开
+            buf[--j]='\0';
+            if(explain_buf(buf,buflist)==0)
             {
-                printf("\n与服务器连接断开，程序退出\n");
-                exit(0);
+                printf("输入的命令格式不正确，请重新输入\n");
+                continue;                    
             }
-        
-            if(events[i].data.fd==0)   //标准输入可读
-            {
-                int j=0;
-                while(j!=101&&(buf[j++]=getchar())!='\n');
-                if(j==101)
-                {
-                    printf("输入的字符过长,请重新输入\n");
-                    continue;
-                }
-                else
-                {
-                    buf[--j]='\0';
-                   if(explain_buf(buf,buflist)==0)
-                    {
-                       printf("输入的命令格式不正确，请重新输入\n");
-                      continue;
-                    }
-                    do_buf(buflist,conn_fd);
-                
-                    
-                }
-            }
-            if((events[i].events&EPOLLIN)&&events[i].data.fd!=0)  //连接套接字可读
-            {
-                if(recv(conn_fd,&recv_buf,sizeof(struct message),0)<0)
-                {
-                
-                    printf("从服务器接受数据失败\n");
-                    
-                }
-                printf("1\n"); ///////////////
-                do_recv(recv_buf,conn_fd);
-
-            }
-                
-        
-            
-                
+            do_buf(buflist,conn_fd);                    
         }
     }
-    close(conn_fd);
 
+   
 
    
 
