@@ -113,7 +113,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
 
     switch(n)
     {
-        case 0:  {
+        case 0:  {  //注册账号
         if((fd=open("passwd.txt",O_RDWR|O_APPEND))<0)
         {
             my_err("open");
@@ -144,11 +144,11 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             mkdir(user_data.username,07777);  //创建用户所属目录
             my_path(user_data.username,user_data.username,path);
             fd=open(path,O_RDWR|O_CREAT|O_APPEND,0777);
-            close(fd);
             if(fd<0)
             {
-                my_err("创建用户好友文件");
+                printf("创建用户好友文件失败\n");
             }
+            close(fd);
         
 
             
@@ -156,7 +156,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         }
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            my_err("send");
+            printf("向客户端发送数据失败\n");
         }
         break;
     }
@@ -183,7 +183,8 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         send_buf.n=-1;
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            my_err("send");
+            printf("向客户端发送数据失败\n");
+            return;
         }
         if(send_buf.n==11)
         {
@@ -191,17 +192,55 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
           temp=insert();
           temp->cli_fd=conn_fd;
           strcpy(temp->username,send_buf.username);
+
+          my_path("lixian",send_buf.username,path);  //发送离线消息
+          fd=open(path,O_RDONLY);
+          if(fd>0)
+          {
+              send_buf.n=6;
+              while(read(fd,send_buf.time,sizeof(send_buf.time))!=0)
+              {
+                  read(fd,send_buf.chat,sizeof(send_buf.chat));
+                  if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+                  {
+                      printf("向客服端发送离线消息失败\n");
+                      return;
+                  }
+              }
+              close(fd);
+              fd=open(path,O_RDWR|O_CREAT|O_TRUNC);
+              close(fd);
+          }
         }
         
         break;
     }
 
-        case 2:  //发送文本信息
-        break;
 
         case 3:   { //添加好友
         temp=head->next;
 
+        my_path(send_buf.from,send_buf.from,path);           //防止重复添加好友
+        fd=open(path,O_RDONLY);
+        if(fd<0)
+        {
+            printf("打开用户好友文件失败\n");
+            return;
+        }
+        while(read(fd,friendname,sizeof(friendname))!=0)
+        {
+            if(strcmp(friendname,send_buf.to)==0)
+            {
+                send_buf.n=-3;
+                if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+                {
+                    printf("向客户端发送数据失败\n");
+                    return;
+                }
+                close(fd);
+                return;
+            }
+        }
         while(temp!=NULL)
         {
             
@@ -302,15 +341,175 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            printf("send error\n");                                                    
         }
         break;
+       }
 
+        case 5:    //删除好友
+       {
+           int i=0;
+           int ret=0;
+           my_path(send_buf.from,send_buf.from,path);
+           fd=open(path,O_RDONLY);
+           if(fd<0)
+           {
+               printf("打开用户好友文件失败\n");
+               send_buf.n=-5;
+           }
+           while(read(fd,send_buf.friendname[i++],sizeof(send_buf.username))!=0)
+           send_buf.friendname[i][0]='\0';
+           i=0;
+           close(fd);
+           while(strlen(send_buf.friendname[i])!=0)
+           {
+               if(strcmp(send_buf.friendname[i],send_buf.to)==0)
+               {
+                   strcpy(send_buf.friendname[i],"\n");
+                   ret++;
+               }
+               i++;
+           }
+           fd=open(path,O_RDWR|O_CREAT|O_TRUNC);
+           if(fd<0)
+           {
+               printf("打开用户好友文件失败\n");
+               send_buf.n=-5;
+               
+           }
+           i=0;
+           while(strlen(send_buf.friendname[i])!=0)
+           {
+               if(strcmp(send_buf.friendname[i],"\n")!=0)
+               {
+                   if(write(fd,send_buf.friendname[i],sizeof(send_buf.username))<0)
+                   {
+                       printf("写入用户好友文件失败\n");
+                       send_buf.n=-5;
+                   }
+               }
+               i++;
+               
+           }
+           close(fd);
+
+
+           i=0;
+           my_path(send_buf.to,send_buf.to,path);
+           fd=open(path,O_RDONLY);      //读取删除对象的好友列表
+           if(fd<0)
+           {
+               printf("打开删除对象好友文件失败\n");
+               send_buf.n=-5;
+           }
+           while(read(fd,send_buf.friendname[i++],sizeof(send_buf.username))!=0);
+           send_buf.friendname[i][0]='\0';
+           close(fd);
+           i=0;
         
+           while(strlen(send_buf.friendname[i])!=0)
+           {
+               if(strcmp(send_buf.friendname[i],send_buf.from)==0)
+               strcpy(send_buf.friendname[i],"\n");
+               i++;
+           }
+           i=0;
+           fd=open(path,O_RDWR|O_CREAT|O_TRUNC);
+           if(fd<0)
+           {
+               printf("打开删除对象好友文件失败\n");
+               send_buf.n=-5;
+           }
+           while(strlen(send_buf.friendname[i])!=0)
+           {
+               if(strcmp(send_buf.friendname[i],"\n")!=0)
+               {
+                   if(write(fd,send_buf.friendname[i],sizeof(send_buf.username))<0)
+                   {
+                       printf("写入删除对象好友文件失败\n");
+                       send_buf.n=-5;
+                   }
+               }
+               i++;
+           }
+           close(fd);
+           ret++;
+           if(ret==2)
+           send_buf.n=55;
+           else
+           send_buf.n=-5;
 
+           if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+           {
+               printf("向客户端发送信息失败\n");
+               return;
+           }
+           break;
+       }
 
+       case 6:   //私聊
+       {
+        
+           int i=0,ret=0;
+           my_path(send_buf.from,send_buf.from,path);
+           fd=open(path,O_RDONLY);
+           while(read(fd,send_buf.friendname[i++],sizeof(send_buf.username))!=0);
+           send_buf.friendname[i][0]='\0';
+           close(fd);
+           i=0;
+           while(strlen(send_buf.friendname[i])!=0)
+           {
+               if(strcmp(send_buf.friendname[i],send_buf.to)==0)
+               {
+                   ret=1;
+                   break;
 
+               }
+               i++;
+           }
+           if(ret)
+           {
+               temp=head->next;
+               while(temp!=NULL)
+               {
+                   if(strcmp(temp->username,send_buf.to)==0)
+                   {
+                       if(send(temp->cli_fd,&send_buf,sizeof(struct message),0)<0)
+                       {
+                           printf("发送用户消息失败\n");
+                           return;
+                       }
+                       else
+                       {
+                           send_buf.n=66;
+                           return;
+                       }
+                       
+                   }
+                   temp=temp->next;
+               }
+               my_path("lixian",send_buf.to,path);
+               
+               fd=open(path,O_RDWR|O_CREAT|O_APPEND,0777);
+               if(fd<0)
+               {
+                   printf("打开指定用户离线消息文件\n");
+                   return;
+               }
+               write(fd,send_buf.time,sizeof(send_buf.time));
+               write(fd,send_buf.chat,sizeof(send_buf.chat));
+               close(fd);
 
+           }
+           else
+           {
+               send_buf.n=-6;
+               if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+               {
+                   printf("向客户端发送信息失败\n");
+                   return;
+               }
+           }
+           
+       }
     
-
-        }
     }
 }
 int main()
@@ -364,6 +563,9 @@ int main()
     {
         my_err("epoll_ctl");
     }
+
+    mkdir("lixian",0777);  //创建离线消息目录
+
     head=create();  //创建链表
     while(1)
     {
