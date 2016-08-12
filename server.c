@@ -200,6 +200,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
               send_buf.n=6;
               while(read(fd,send_buf.time,sizeof(send_buf.time))!=0)
               {
+                  read(fd,send_buf.from,sizeof(send_buf.from));
                   read(fd,send_buf.chat,sizeof(send_buf.chat));
                   if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
                   {
@@ -494,6 +495,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                    return;
                }
                write(fd,send_buf.time,sizeof(send_buf.time));
+               write(fd,send_buf.from,sizeof(send_buf.from));
                write(fd,send_buf.chat,sizeof(send_buf.chat));
                close(fd);
 
