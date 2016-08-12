@@ -30,6 +30,7 @@
 #define L_PURPLE       "\e[1;35m"  //深紫色
 #define L_RED          "\e[1;31m"  //红色
 #define L_YELLOW       "\e[1;33m"  //黄色
+#define L_GREEN        "\e[1;32m"  //绿色
 
 
 
@@ -428,8 +429,8 @@ void denglu()  //登陆回调函数
 
        gtk_widget_show_all(dialog);
        system("clear");  //清屏
-       system("clear");
-       system("clear");
+       printf(L_GREEN"欢迎使用聊天系统,输入help查看命令帮助"NONE);
+       printf("\n");
     
    }
 }
@@ -530,6 +531,8 @@ int  explain_buf(char* buf,char buflist[5][21])       //解析用户输入的命
         else
         {
             buflist[i][j]='\0';
+            p++;
+            while(*p==' ')
             p++;
             i++;
             j=0;
@@ -645,6 +648,11 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
                 printf("服务器未响应\n");
                 return;
             }
+            
+            printf(L_PURPLE"%s"NONE,send_buf.time);   //将自己的输入内容显示
+            printf(L_PURPLE"[私聊]我@%s:"NONE,send_buf.to);
+            printf(L_PURPLE"%s"NONE,send_buf.chat);
+            printf("\n");
 
         }
         else
@@ -658,6 +666,37 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
     else if(strcmp(buflist[0],"clear")==0&&strlen(buflist[1])==0)  //清屏
     {
         system("clear");
+    }
+    else if(strcmp(buflist[0],"exit")==0&&strlen(buflist[1])==0)  //退出客户端
+    {
+        close(conn_fd);
+        printf(L_GREEN"退出聊天程序，欢迎下次使用"NONE);
+        printf("\n");
+        exit(1);
+        
+    }
+    else if(strcmp(buflist[0],"help")==0&&strlen(buflist[1])==0)   //查看帮助命令
+    {
+        printf(L_YELLOW"命令格式如下:"NONE);
+        printf("\n");
+        printf(L_GREEN"查看所有好友: ls -a "NONE);
+        printf("\n");
+        printf(L_GREEN"查看在线好友：ls");
+        printf("\n");
+        printf(L_GREEN"添加好友: add  好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"删除好友：delete  好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"私聊：chat to 好友名称　内容"NONE);
+        printf("\n");
+        printf(L_GREEN"群聊：chat all  内容"NONE);
+        printf("\n");
+        printf(L_GREEN"查看帮助：help"NONE);
+        printf("\n");
+        printf(L_GREEN"清屏：clear"NONE);
+        printf("\n");
+        printf(L_GREEN"退出程序：exit"NONE);
+        printf("\n");
     }
     else
     {
@@ -703,6 +742,7 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
             printf("%s\n",recv_buf.friendname[i]);
             i++;
         }
+        printf("\n");
 
     }
     if(n==44) //显示在线好友
@@ -715,6 +755,7 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
             printf("%s\n",recv_buf.friendname[i]);
             i++;        
         }
+        printf("\n");
     }
     if(n==55)  //删除好友成功
     {
@@ -730,7 +771,7 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
     {
         printf(L_CYAN"%s"NONE,recv_buf.time);
         printf(L_CYAN"[私聊]"NONE);
-        printf(L_CYAN"%s@:"NONE,recv_buf.from);
+        printf(L_CYAN"%s@我:"NONE,recv_buf.from);
         printf(L_CYAN"%s"NONE,recv_buf.chat);
         printf("\n");
 
@@ -784,8 +825,7 @@ void serv_quit()  //监控服务器退出
         if(events[0].events&EPOLLRDHUP)
         {
             printf(L_RED"服务器退出，程序退出\n"NONE);
-            //shutdown(conn_fd,2);
-          //  close(conn_fd);
+        
             exit(1);
         }
     }
