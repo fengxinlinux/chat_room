@@ -1,9 +1,3 @@
-/*************************************************************************
-> File Name: server.c
-> Author: FengXin
-> Mail: fengxinlinux@gmail.com
-> Created Time: 2016年08月08日 星期一 14时13分13秒
-************************************************************************/
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -115,9 +109,11 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
     int i=0;
     fp=fopen("passwd.txt","a+");
     fclose(fp);
+
+
     switch(n)
     {
-        case 0: //注册
+        case 0:  {
         if((fd=open("passwd.txt",O_RDWR|O_APPEND))<0)
         {
             my_err("open");
@@ -163,8 +159,9 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             my_err("send");
         }
         break;
+    }
 
-        case 1:  //登陆
+        case 1:  {//登陆 
         if((fd=open("passwd.txt",O_RDONLY))<0)
         {
             my_err("open");
@@ -197,11 +194,12 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         }
         
         break;
+    }
 
         case 2:  //发送文本信息
         break;
 
-        case 3:   //添加好友
+        case 3:   { //添加好友
         temp=head->next;
 
         while(temp!=NULL)
@@ -258,8 +256,9 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             printf("send error\n");
         }
         break;
+    }
 
-        case 4:   //查看好友列表
+        case 4:   {//查看好友列表 
         my_path(recv_buf.username,recv_buf.username,path);  //连接用户好友文件路径
         fd=open(path,O_RDONLY);
         while(read(fd,send_buf.friendname[i++],sizeof(recv_buf.username))!=0);
@@ -270,9 +269,9 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             printf("send error\n");
             
         }
-        break;
+        break;}
         
-        case 44:     //查看在线好友
+        case 44:    { //查看在线好友
         my_path(recv_buf.username,recv_buf.username,path);  //连接用户好友文件路径
         fd=open(path,O_RDONLY);
         
@@ -311,6 +310,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
 
     
 
+        }
     }
 }
 int main()
@@ -393,7 +393,7 @@ int main()
             {
                 
                 memset(&recv_buf,0,sizeof(struct message));  
-                recv(conn_fd,&recv_buf,sizeof(struct message),0);
+                recv(events[i].data.fd,&recv_buf,sizeof(struct message),0);
                 send_message(recv_buf,events[i].data.fd);
                 
             }
