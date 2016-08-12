@@ -16,7 +16,11 @@
 #include<sys/stat.h>
 #include<gtk/gtk.h>
 
-GtkWidget *entry_username; //两个文本框，用于输入用户名和密码
+GtkWidget* entry_username;  //记录登陆时文本框中的账号信息
+GtkWidget* entry_pwd;
+
+
+GtkWidget *entry_username1; //记录注册文本框中账号信息
 GtkWidget *entry_pwd1;
 GtkWidget *entry_pwd2;   //记录注册时第二次输入的密码
 
@@ -25,25 +29,22 @@ void destroy(GtkWidget *widget,gpointer* data)  //退出图形界面
     gtk_main_quit();
 }
 
-void zhuce_no(GtkWidget*widget,gpointer* dialog)     //否。登陆回调函数
+void zhuce_no(GtkWidget*widget,gpointer* dialog)     //否。注册回调函数
 {
     gtk_widget_destroy(GTK_WIDGET(dialog));
-} 
-void zhuce_yes()       //是。登陆回调函数
+}  
+void zhuce_yes()       //是。注册回调函数
 {
     gchar* username;
     gchar* pwd1;
     gchar* pwd2;
 
     //获取输入信息
-    username=gtk_entry_get_text(GTK_ENTRY(entry_username));
+    username=gtk_entry_get_text(GTK_ENTRY(entry_username1));
     pwd1=gtk_entry_get_text(GTK_ENTRY(entry_pwd1));
     pwd2=gtk_entry_get_text(GTK_ENTRY(entry_pwd2));
 
-    printf("%s\n",username);
-    printf("%s\n",pwd1);
-    printf("%s\n",pwd2);
-
+    
 }
 /*void make_dialog()                    //确认注册提示文本框
 {
@@ -88,7 +89,7 @@ void zhuce()              /////////注册对话框
     vbox=GTK_DIALOG(dialog)->vbox;
 
      /*插入图片*/
-    image=gtk_image_new_from_file("22.png");
+    image=gtk_image_new_from_file("2.png");
     gtk_box_pack_start(GTK_BOX(vbox),image,FALSE,FALSE,0);
     gtk_widget_show(image);
 
@@ -98,11 +99,11 @@ void zhuce()              /////////注册对话框
     gtk_widget_show(label);
 
     /*生成编辑框*/
-    text=gtk_entry_new_with_max_length(20);
+    text=gtk_entry_new_with_max_length(21);
     gtk_box_pack_start(GTK_BOX(vbox),text,FALSE,FALSE,0);
 
     //获取输入信息
-    entry_username=text;
+    entry_username1=text;
 
     gtk_widget_show(text);
 
@@ -114,7 +115,7 @@ void zhuce()              /////////注册对话框
     gtk_widget_show(label);
 
     /*生成编辑框*/
-    text=gtk_entry_new_with_max_length(20);          
+    text=gtk_entry_new_with_max_length(21);          
     gtk_box_pack_start(GTK_BOX(vbox),text,FALSE,FALSE,0);
     //设置密码框不可见，用户输入时显示“*”
     gtk_entry_set_visibility(GTK_ENTRY(text),FALSE);
@@ -135,7 +136,7 @@ void zhuce()              /////////注册对话框
     gtk_widget_show(label);
 
     /*生成编辑框*/
-    text=gtk_entry_new_with_max_length(20);          
+    text=gtk_entry_new_with_max_length(21);          
     gtk_box_pack_start(GTK_BOX(vbox),text,FALSE,FALSE,0);
     //设置密码框不可见，用户输入时显示“*”
     gtk_entry_set_visibility(GTK_ENTRY(text),FALSE);
@@ -170,7 +171,8 @@ void denglu()  //登陆回调函数
 
     //获取输入信息
     username=gtk_entry_get_text(GTK_ENTRY(entry_username));
-    pwd=gtk_entry_get_text(GTK_ENTRY(entry_pwd1));
+    pwd=gtk_entry_get_text(GTK_ENTRY(entry_pwd));
+
 
 
 
@@ -205,7 +207,7 @@ GtkWidget* maketextentry()
     vbox=gtk_vbox_new(FALSE,5);
 
      /*插入图片*/
-    image=gtk_image_new_from_file("11.png");
+    image=gtk_image_new_from_file("1.png");
     gtk_box_pack_start(GTK_BOX(vbox),image,FALSE,FALSE,0);
     gtk_widget_show(image);
 
@@ -215,7 +217,7 @@ GtkWidget* maketextentry()
     gtk_widget_show(label);
 
     /*生成编辑框*/
-    text=gtk_entry_new_with_max_length(20);
+    text=gtk_entry_new_with_max_length(21);
     gtk_box_pack_start(GTK_BOX(vbox),text,FALSE,FALSE,0);
     /*获取输入信息*/
     entry_username=text;
@@ -230,14 +232,14 @@ GtkWidget* maketextentry()
     gtk_widget_show(label);
 
     /*生成编辑框*/
-    text=gtk_entry_new_with_max_length(20);          
+    text=gtk_entry_new_with_max_length(21);          
     gtk_box_pack_start(GTK_BOX(vbox),text,FALSE,FALSE,0);
     //设置密码框不可见，用户输入时显示“*”
     gtk_entry_set_visibility(GTK_ENTRY(text),FALSE);
     gtk_entry_set_invisible_char(GTK_ENTRY(text),'*');
 
     //获取输入信息
-    entry_pwd1=text;
+    entry_pwd=text;
 
     gtk_widget_show(text);
 
