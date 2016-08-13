@@ -668,6 +668,49 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            break;
            
        }
+
+       case 8:   //查看与好友聊天记录
+       {
+           int j=0,ret=0;
+           send_buf.n=-8;
+           temp=head->next;
+           my_path(send_buf.from,send_buf.from,path);
+           fd=open(path,O_RDONLY);
+           while(read(fd,send_buf.friendname[j++],sizeof(send_buf.username))!=0);
+           send_buf.friendname[j][0]='\0';
+           j=0;
+           while(strlen(send_buf.friendname[j])!=0)
+           {
+               if(strcmp(send_buf.to,send_buf.friendname[j])==0)
+               {
+                  ret=1;
+                  break;
+               }
+               j++;
+               
+           }
+           if(ret)
+           {
+               FILE * fp;
+               j=0;
+               my_path(send_buf.from,send_buf.to,path);
+               fp=fopen(path,"r+");
+               while(!feof(fp))
+               {
+                   fgets(send_buf.chathistory[j],10000,fp);
+                   j++;
+                   if(j==100)
+                   break;
+               }
+               send_buf.n=8;
+           }
+           if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+           {
+               printf("向客户端发送数据失败\n");
+               return;
+           }
+           
+       }
     
     }
 }
