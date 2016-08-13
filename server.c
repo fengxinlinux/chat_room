@@ -479,6 +479,13 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                {
                    if(strcmp(temp->username,send_buf.to)==0)
                    {
+                       my_path(send_buf.from,send_buf.to,path);
+                       fd=open(path,O_RDWR|O_CREAT|O_APPEND);
+                       if(fd<0)
+                       {
+                           printf("打开记录用户聊天记录文件失败\n");
+                       }
+
                        if(send(temp->cli_fd,&send_buf,sizeof(struct message),0)<0)
                        {
                            printf("发送用户消息失败\n");
@@ -486,7 +493,27 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                        }
                        else
                        {
-                           send_buf.n=66;
+                           int stdoutfd=dup(1);
+                           dup2(fd,1);
+                           printf("%s",send_buf.time);
+                           printf("我@%s:%s\n",send_buf.to,send_buf.chat);
+                           dup2(stdoutfd,1);
+                           close(fd);
+
+                           my_path(send_buf.to,send_buf.from,path);
+                           open(path,O_RDWR|O_CREAT|O_APPEND);
+                           if(fd<0)
+                           {
+                               printf("打开记录用户聊天记录文件失败\n");
+                               return;
+                           }
+                           dup2(fd,1);
+                           printf("%s",send_buf.time);
+                           printf("%s@我:%s\n",send_buf.from,send_buf.chat);
+                           dup2(stdoutfd,1);
+                           close(fd);
+                           close(stdoutfd);
+
                            return;
                        }
                        
@@ -527,6 +554,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            i++;
            if(i<100)
            {
+               taolun[i].n=1;
                send_buf.groupi=i;
                strcpy(taolun[i].username[0],send_buf.from);
                strcpy(taolun[i].groupname,send_buf.groupname);
@@ -570,9 +598,17 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                {
                    if(strcmp(send_buf.to,temp->username)==0)
                    {
+                       int j=0,k=send_buf.groupi;
                        send(temp->cli_fd,&send_buf,sizeof(struct message),0);
+                       while(taolun[k].groupfd[j]!=0)
+                       {
+                           j++;
+                       }
+                       taolun[k].groupfd[j]=temp->cli_fd;
+                       strcpy(taolun[k].username[j],send_buf.to);
                        return;
                    }
+                   temp=temp->next;
                }
            }
            send_buf.n=-777;
@@ -582,11 +618,14 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
 
        case 7:  //群聊
        {
+           
            int i=send_buf.groupi,j=0;
            while(taolun[i].groupfd[j]!=0)
            {
                if(taolun[i].groupfd[j]!=conn_fd&&taolun[i].groupfd[j]!=-1)
-               send(taolun[i].groupfd[j],&send_buf,sizeof(struct message),0);
+               {
+                   send(taolun[i].groupfd[j],&send_buf,sizeof(struct message),0);
+               }
                j++;
            }
            break;
@@ -599,6 +638,19 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            {
                j++;
            }
+           if(j==0)
+           {
+               j=1;
+               send_buf.n=-7777;
+               while(taolun[i].groupfd[j]!=0&&taolun[i].groupfd[j]!=-1)
+               {
+                   send(taolun[i].groupfd[j],&send_buf,sizeof(struct message),0);
+                   j++;
+               }
+               taolun[i].n=0;
+               memset(&taolun[i],0,sizeof(taolun[i]));
+           }
+           else
            taolun[i].groupfd[j]=-1;
            break;
        }
