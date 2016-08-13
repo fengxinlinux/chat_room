@@ -27,7 +27,6 @@ typedef struct cli_data   //记录在线用户信息的结构体
 {
     int  cli_fd;    //记录连接的用户套接字
     char username[21];   //记录账号，最大20位
-    //char ip[16];    //记录ip地址
     struct cli_data* next;
 }cli_data;
 typedef struct user      //记录用户账号信息的结构体
@@ -35,6 +34,14 @@ typedef struct user      //记录用户账号信息的结构体
     char username[21];
     char pwd[21];
 }user;
+typedef struct group
+{
+    char username[100][21];
+    int groupfd[100];
+    char groupname[21];
+    int n;
+}group;
+group taolun[100];   //全局讨论组
 char* my_time() //输出当前时间
 {
     time(&timep);
@@ -509,6 +516,104 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                    return;
                }
            }
+           break;
+           
+       }
+       
+       case 77:   //创建讨论组
+       {
+           int i=1;
+           while(taolun[i].n!=0)
+           i++;
+           if(i<100)
+           {
+               send_buf.groupi=i;
+               strcpy(taolun[i].username[0],send_buf.from);
+               strcpy(taolun[i].groupname,send_buf.groupname);
+               taolun[i].groupfd[0]=conn_fd;
+           }
+           else
+           send_buf.n=-77;
+
+           if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+           {
+               printf("向客户发送信息失败\n");
+               return;
+           }
+           break;
+
+       }
+
+       case 777:   //邀请在线好友加入讨论组
+       {
+           int ret=0;
+           int i=0;
+           my_path(send_buf.from,send_buf.from,path);
+           fd=open(path,O_RDONLY);
+           if(fd<0)
+           {
+               printf("打开用户好友文件失败\n");
+               send_buf.n=-777;
+           }
+           while(read(fd,send_buf.friendname[i],sizeof(send_buf.username))!=0)
+           {
+               if(strcmp(send_buf.to,send_buf.friendname[i])==0)
+               {
+                   ret=1;
+                   break;
+               }
+           }
+           if(ret)
+           {
+               temp=head->next;
+               while(temp!=NULL)
+               {
+                   if(strcmp(send_buf.to,temp->username)==0)
+                   {
+                       send(temp->cli_fd,&send_buf,sizeof(struct message),0);
+                       return;
+                   }
+               }
+           }
+           send_buf.n=-777;
+           send(conn_fd,&send_buf,sizeof(struct message),0);
+           break;
+       }
+
+       case 7:  //群聊
+       {
+           int i=send_buf.groupi,j=0;
+           while(taolun[i].groupfd[j]!=0)
+           {
+               if(taolun[i].groupfd[j]!=conn_fd&&taolun[i].groupfd[j]!=-1)
+               send(taolun[i].groupfd[j],&send_buf,sizeof(struct message),0);
+               j++;
+           }
+           break;
+       }
+
+       case -7: //退出讨论组
+       {
+           int i=send_buf.groupi,j=0;
+           while(taolun[i].groupfd[j]!=conn_fd)
+           {
+               j++;
+           }
+           taolun[i].groupfd[j]=-1;
+           break;
+       }
+
+       case 7777:  //查看讨论组成员
+       {
+           int i=send_buf.groupi,j=0,k=0;;
+           while(taolun[i].groupfd[j]!=0&&taolun[i].groupfd[j]!=-1)
+           {
+               strcpy(send_buf.friendname[k++],taolun[i].username[j]);
+               j++;
+           }
+           send_buf.friendname[k][0]='\0';
+           send(conn_fd,&send_buf,sizeof(struct message),0);
+           break;
            
        }
     
@@ -523,6 +628,8 @@ int main()
     int epollfd;
     struct epoll_event  event;
     struct epoll_event*  events;
+
+    memset(taolun,0,sizeof(taolun));
     
 
     //创建一个套接字
