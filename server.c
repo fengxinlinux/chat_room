@@ -144,9 +144,17 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                 my_err("write");
             }
             close(fd);
-            
-        
+
+            int fd,stdoutfd;
+            fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+            stdoutfd=dup(1);
             printf("a user register,username:%s,time:%s",user_data.username,my_time());
+            dup2(fd,1);
+            printf("a user register,username:%s,time:%s",user_data.username,my_time());
+            dup2(stdoutfd,1);
+            close(fd);
+            close(stdoutfd);
+
             
             mkdir(user_data.username,07777);  //创建用户所属目录
             my_path(user_data.username,user_data.username,path);
@@ -195,7 +203,16 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         }
         if(send_buf.n==11)
         {
-          printf("a user is login,username:%s,time:%s",send_buf.username,my_time()); 
+          int fd,stdoutfd;
+          fd=open("log_file",O_CREAT|O_RDWR|O_APPEND);
+          printf("a user is login,username:%s,time:%s",send_buf.username,my_time());
+          stdoutfd=dup(1);
+          dup2(fd,1);
+          printf("a user is login,username:%s,time:%s",send_buf.username,my_time());
+          dup2(stdoutfd,1);
+          close(fd);
+          close(stdoutfd);
+
           temp=insert();
           temp->cli_fd=conn_fd;
           strcpy(temp->username,send_buf.username);
@@ -723,8 +740,12 @@ int main()
     int epollfd;
     struct epoll_event  event;
     struct epoll_event*  events;
+    int fd;
 
     memset(taolun,0,sizeof(taolun));
+
+    fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+    close(fd);
     
 
     //创建一个套接字
@@ -779,8 +800,10 @@ int main()
         {
             if(events[i].data.fd==sock_fd)    //有请求连接
             {
-            
-                
+                int fd,stdoutfd;
+                fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+                stdoutfd=dup(1);
+
                 conn_fd=accept(sock_fd,(struct sockaddr*)&cli_addr,&cli_len);
                 if(conn_fd<0)
                 {
@@ -794,6 +817,12 @@ int main()
                     my_err("epoll_ctl");
                 }
                 printf("a connet is connected,ip is %s,time:%s",inet_ntoa(cli_addr.sin_addr),my_time());
+                dup2(fd,1);
+                printf("a connet is connected,ip is %s,time:%s",inet_ntoa(cli_addr.sin_addr),my_time());
+                dup2(stdoutfd,1);
+                close(fd);
+                close(stdoutfd);
+
             }
             else if(events[i].events&EPOLLIN)    //有可读的套接字
             {
@@ -805,9 +834,16 @@ int main()
             }
             if(events[i].events&EPOLLRDHUP)
             {
-                
+                int fd,stdoutfd;
+                fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+                stdoutfd=dup(1);
                 delete(head,events[i].data.fd);
                 printf("a connet is quit,ip is %s,time:%s",inet_ntoa(cli_addr.sin_addr),my_time());
+                dup2(fd,1);
+                printf("a connet is quit,ip is %s,time:%s",inet_ntoa(cli_addr.sin_addr),my_time());
+                dup2(stdoutfd,1);
+                close(fd);
+                close(stdoutfd);
                 epoll_ctl(epollfd,EPOLL_CTL_DEL,events[i].data.fd,&event);
                 close(events[i].data.fd);
             }
