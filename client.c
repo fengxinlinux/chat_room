@@ -692,6 +692,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             printf("\n");
 
         }
+       
         else
         {
             printf(L_RED"未找到该命令\n"NONE);
@@ -804,6 +805,19 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             return;
         }
 
+    }
+    else if(strcmp(buflist[0],"history")==0&&strlen(buflist[1])!=0&&strlen(buflist[2])==0)  //查看与好友聊天记录
+    {
+    
+        send_buf.n=8;
+        strcpy(send_buf.from,username1);
+        strcpy(send_buf.to,buflist[1]);
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf(L_RED"服务器未响应"NONE);
+            return;            
+        }
+   
     }
     else if(strcmp(buflist[0],"help")==0&&strlen(buflist[1])==0)   //查看帮助命令
     {
@@ -967,6 +981,24 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
         printf("\n");
         groupi=0;
         groupname[0]='\0';
+    }
+    if(n==8)   //查看聊天记录
+    {
+        int j=0;
+        printf(L_YELLOW"与好友%s的聊天记录:"NONE,send_buf.to);
+        printf("\n");
+        while(strlen(recv_buf.chathistory[j])!=0)
+        {
+            printf(L_PURPLE"%s"NONE,recv_buf.chathistory[j]);
+            j++;
+        }
+        printf("\n");
+    }
+    if(n==-8) //查看聊天记录失败
+    {
+        printf(L_RED"查看聊天记录失败，对方并不是您好友"NONE);
+        printf("\n");
+        return;
     }
 
 
