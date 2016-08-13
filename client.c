@@ -678,6 +678,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             strcpy(send_buf.groupname,groupname);
             strcpy(send_buf.chat,buflist[2]);
             strcpy(send_buf.time,my_time());
+            send_buf.groupi=groupi;
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"服务器未响应"NONE);
@@ -751,6 +752,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
                 printf(L_RED"服务器未响应\n"NONE);
                 return;
             }
+            
         }
         else if(strcmp(buflist[1],"exit")==0&&strlen(buflist[2])==0)  //退出讨论组
         {
@@ -818,6 +820,12 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         printf(L_GREEN"私聊：chat to 好友名称　内容"NONE);
         printf("\n");
         printf(L_GREEN"群聊：chat all  内容"NONE);
+        printf("\n");
+        printf(L_GREEN"创建群：group create 群名称"NONE);
+        printf("\n");
+        printf(L_GREEN"邀请好友进群：group add 好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"退出群(群主退出群会自动解散)：group exit"NONE);
         printf("\n");
         printf(L_GREEN"查看帮助：help"NONE);
         printf("\n");
@@ -933,6 +941,8 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
     {
         printf(L_YELLOW"好友:%s 邀请您加入群:%s"NONE,recv_buf.from,recv_buf.groupname);
         printf("\n");
+        groupi=recv_buf.groupi;
+        strcpy(groupname,recv_buf.groupname);
     }
     if(n==-777)  //邀请好友加入讨论组失败
     {
@@ -950,6 +960,13 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
             printf("\n");
             i++;
         }
+    }
+    if(n==-7777)  //群主退出。群解散
+    {
+        printf(L_RED"由于群主退出，群%s已解散"NONE,groupname);
+        printf("\n");
+        groupi=0;
+        groupname[0]='\0';
     }
 
 
