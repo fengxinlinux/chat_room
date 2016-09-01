@@ -738,13 +738,17 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                while(!feof(fp))
                {
                    strcpy(send_buf.chathistory,"");
-                   fgets(send_buf.chathistory,10000,fp);
+                   fgets(send_buf.chathistory,1000,fp);
                    send_buf.n=8;
-                   if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+                   int ret;
+                   sleep(1);
+                   if((ret=send(conn_fd,&send_buf,sizeof(struct message),0))<0)
                    {
                        printf("向客户端发送数据失败\n");
                        return;
                    }
+                   printf("ret=%d\n",ret);////////
+                   printf("%s",send_buf.chathistory);/////////
                }
 
            }
