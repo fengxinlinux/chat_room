@@ -151,21 +151,21 @@ void zhuce_yes()       //是。注册回调函数
         
     }
     
-
-
-    if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+    int ret;
+     if((ret=send(conn_fd,&send_buf,sizeof(struct message),0))<0)
     {
         printf("服务器未响应\n");
         return;
     }
+
     if(recv(conn_fd,&recv_buf,recv_len,0)<0)
     {
         printf("从服务器接受数据失败\n");
         return;
     }
+
     if(recv_buf.n==-2)  //注册失败
     {
-
         GtkWidget* dialog;
         GtkWidget* label;
         GtkWidget* button;
@@ -190,7 +190,6 @@ void zhuce_yes()       //是。注册回调函数
     }
     if(recv_buf.n==22)   //注册成功
    {
-
        GtkWidget* dialog;
        GtkWidget* label;
        GtkWidget* button;
@@ -367,13 +366,13 @@ void denglu()  //登陆回调函数
     }
 
 
-    
-    
+   
     if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
     {
         printf("服务器未响应\n");
         return;
     }
+
     
     int recv_len=sizeof(struct message);
     if(recv(conn_fd,&recv_buf,recv_len,0)<0)
@@ -394,7 +393,7 @@ void denglu()  //登陆回调函数
 
         //向对话框中加入一个文本标签
         vbox=GTK_DIALOG(dialog)->vbox;
-        label=gtk_label_new("登陆失败，账号或密码错误");
+        label=gtk_label_new("登陆失败，账号信息错误或该账号已登陆");
         gtk_box_pack_start(GTK_BOX(vbox),label,TRUE,TRUE,30);
 
         //向对话框中加入一个按钮
@@ -564,11 +563,13 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             printf(L_RED"不能添加自己为好友\n"NONE);
             return;
         }
+    
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf(L_RED"服务器未响应\n"NONE);
             return;
         }
+        
     }
 
    else if(strcmp(buflist[0],"yes")==0)   //确认添加好友命令
@@ -576,6 +577,9 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         send_buf.n=33;
         strcpy(send_buf.from,from);
         strcpy(send_buf.to,to);
+        
+    
+
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf(L_RED"服务器未响应\n"NONE);
@@ -589,6 +593,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         strcpy(send_buf.from,from);
         strcpy(send_buf.to,to);
 
+    
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf(L_RED"服务器未响应\n"NONE);
@@ -611,6 +616,8 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             printf(L_RED"未找到该命令\n"NONE);
             return;
         }
+
+    
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf(L_RED"服务器未响应\n"NONE);
@@ -624,6 +631,8 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             strcpy(send_buf.to,buflist[1]);
             strcpy(send_buf.from,username1);
             send_buf.n=5;
+
+            
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"服务器未响应\n"NONE);
@@ -653,6 +662,9 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
                 printf("\n");
                 return;
             }
+
+            
+            
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf("服务器未响应\n");
@@ -679,6 +691,8 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             strcpy(send_buf.chat,buflist[2]);
             strcpy(send_buf.time,my_time());
             send_buf.groupi=groupi;
+
+        
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"服务器未响应"NONE);
@@ -726,6 +740,8 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             send_buf.n=77;
             strcpy(send_buf.groupname,buflist[2]);
             strcpy(send_buf.from,username1);
+
+            
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"服务器未响应\n"NONE);
@@ -748,6 +764,8 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             strcpy(send_buf.from,username1);
             strcpy(send_buf.to,buflist[2]);
             strcpy(send_buf.groupname,groupname);
+
+            
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"服务器未响应\n"NONE);
@@ -765,6 +783,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             }
             send_buf.n=-7;
             send_buf.groupi=groupi;
+
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"退出群失败"NONE);
@@ -791,6 +810,7 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
             send_buf.n=7777;
             send_buf.groupi=groupi;
 
+    
             if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
             {
                 printf(L_RED"查看群成员失败"NONE);
@@ -812,11 +832,16 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         send_buf.n=8;
         strcpy(send_buf.from,username1);
         strcpy(send_buf.to,buflist[1]);
+
+
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf(L_RED"服务器未响应"NONE);
             return;            
         }
+
+        printf(L_YELLOW"与好友%s的聊天记录:"NONE,send_buf.to);
+        printf("\n");
    
     }
     else if(strcmp(buflist[0],"help")==0&&strlen(buflist[1])==0)   //查看帮助命令
@@ -840,6 +865,8 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         printf(L_GREEN"邀请好友进群：group add 好友名称"NONE);
         printf("\n");
         printf(L_GREEN"退出群(群主退出群会自动解散)：group exit"NONE);
+        printf("\n");
+        printf(L_GREEN"查看聊天记录：history 好友名称"NONE);
         printf("\n");
         printf(L_GREEN"查看帮助：help"NONE);
         printf("\n");
@@ -984,15 +1011,8 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
     }
     if(n==8)   //查看聊天记录
     {
-        int j=0;
-        printf(L_YELLOW"与好友%s的聊天记录:"NONE,send_buf.to);
-        printf("\n");
-        while(strlen(recv_buf.chathistory[j])!=0)
-        {
-            printf(L_PURPLE"%s"NONE,recv_buf.chathistory[j]);
-            j++;
-        }
-        printf("\n");
+        printf(L_PURPLE"%s"NONE,recv_buf.chathistory); 
+
     }
     if(n==-8) //查看聊天记录失败
     {
