@@ -144,9 +144,10 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                 my_err("write");
             }
             close(fd);
+        
 
             int fd,stdoutfd;
-            fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+            fd=open("log_file",O_RDWR|O_CREAT|O_APPEND,0777);
             stdoutfd=dup(1);
             printf("a user register,username:%s,time:%s",user_data.username,my_time());
             dup2(fd,1);
@@ -154,9 +155,9 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             dup2(stdoutfd,1);
             close(fd);
             close(stdoutfd);
-
             
-            mkdir(user_data.username,07777);  //创建用户所属目录
+            
+            mkdir(user_data.username,0777);  //创建用户所属目录
             my_path(user_data.username,user_data.username,path);
             fd=open(path,O_RDWR|O_CREAT|O_APPEND,0777);
             if(fd<0)
@@ -169,14 +170,16 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             
             
         }
+        
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
             printf("向客户端发送数据失败\n");
         }
+    
         break;
     }
 
-        case 1:  {//登陆 
+        case 1:  {//登陆
         if((fd=open("passwd.txt",O_RDONLY))<0)
         {
             my_err("open");
@@ -193,7 +196,18 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
             }
         }
         if(ret)
-        send_buf.n=11;
+        {
+            temp=head->next;
+            send_buf.n=11;
+            while(temp!=NULL)
+            {
+                if(strcmp(temp->username,send_buf.username)==0)
+                {
+                    send_buf.n=-1;
+                }
+                temp=temp->next;
+            }
+        }
         else
         send_buf.n=-1;
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
@@ -204,7 +218,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
         if(send_buf.n==11)
         {
           int fd,stdoutfd;
-          fd=open("log_file",O_CREAT|O_RDWR|O_APPEND);
+          fd=open("log_file",O_CREAT|O_RDWR|O_APPEND,0777);
           printf("a user is login,username:%s,time:%s",send_buf.username,my_time());
           stdoutfd=dup(1);
           dup2(fd,1);
@@ -237,7 +251,7 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
               close(fd);
           }
         }
-        
+    
         break;
     }
 
@@ -693,6 +707,11 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            temp=head->next;
            my_path(send_buf.from,send_buf.from,path);
            fd=open(path,O_RDONLY);
+           if(fd<0)
+           {
+               printf("打开用户好友文件失败\n");
+               return;
+           }
            while(read(fd,send_buf.friendname[j++],sizeof(send_buf.username))!=0);
            send_buf.friendname[j][0]='\0';
            j=0;
@@ -709,22 +728,25 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            if(ret)
            {
                FILE * fp;
-               j=0;
                my_path(send_buf.from,send_buf.to,path);
                fp=fopen(path,"r+");
+               if(fp==NULL)
+               {
+                   printf("打开用户好友聊天记录文件失败\n");
+                   return;
+               }
                while(!feof(fp))
                {
-                   fgets(send_buf.chathistory[j],10000,fp);
-                   j++;
-                   if(j==100)
-                   break;
+                   strcpy(send_buf.chathistory,"");
+                   fgets(send_buf.chathistory,10000,fp);
+                   send_buf.n=8;
+                   if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+                   {
+                       printf("向客户端发送数据失败\n");
+                       return;
+                   }
                }
-               send_buf.n=8;
-           }
-           if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
-           {
-               printf("向客户端发送数据失败\n");
-               return;
+
            }
            
        }
@@ -744,7 +766,7 @@ int main()
 
     memset(taolun,0,sizeof(taolun));
 
-    fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+    fd=open("log_file",O_RDWR|O_CREAT|O_APPEND,0777);
     close(fd);
     
 
@@ -801,7 +823,7 @@ int main()
             if(events[i].data.fd==sock_fd)    //有请求连接
             {
                 int fd,stdoutfd;
-                fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+                fd=open("log_file",O_RDWR|O_CREAT|O_APPEND,0777);
                 stdoutfd=dup(1);
 
                 conn_fd=accept(sock_fd,(struct sockaddr*)&cli_addr,&cli_len);
@@ -828,14 +850,18 @@ int main()
             {
                 
                 memset(&recv_buf,0,sizeof(struct message));  
-                recv(events[i].data.fd,&recv_buf,sizeof(struct message),0);
+                if(recv(events[i].data.fd,&recv_buf,sizeof(struct message),0)<0)
+                {
+                    my_err("recv");
+                }
+                
                 send_message(recv_buf,events[i].data.fd);
                 
             }
             if(events[i].events&EPOLLRDHUP)
             {
                 int fd,stdoutfd;
-                fd=open("log_file",O_RDWR|O_CREAT|O_APPEND);
+                fd=open("log_file",O_RDWR|O_CREAT|O_APPEND,0777);
                 stdoutfd=dup(1);
                 delete(head,events[i].data.fd);
                 printf("a connet is quit,ip is %s,time:%s",inet_ntoa(cli_addr.sin_addr),my_time());
