@@ -1026,14 +1026,23 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
 void recv_pthread()   //接收服务器数据线程
 {
     struct message send_buf,recv_buf;
-    int ret; 
+    int ret=0; 
+    int len=sizeof(struct message);
+    int sum;
+    struct message* p=NULL;
     memset(&send_buf,0,sizeof(struct message));
     memset(&recv_buf,0,sizeof(struct message));
 
     while(1)
     {
-
-        if((ret=recv(conn_fd,&recv_buf,sizeof(struct message),0))==0)
+        ret=0;
+        sum=0;
+        p=&recv_buf;
+        strcpy(recv_buf.chathistory,"");
+       while(sum!=len)
+      {
+        p+=ret;
+        if((ret=recv(conn_fd,p,len-sum,0))==0)
         {
             printf("从服务器接收数据失败\n");
             exit(1);
@@ -1041,11 +1050,17 @@ void recv_pthread()   //接收服务器数据线程
         else if(ret<0)
         {
             printf("从服务器接受数据失败\n");
-            continue;
+            return;
         }
-        do_recv(recv_buf);
+        sum+=ret;
+
+        
+      }
+        
+     do_recv(recv_buf);
 
     }
+    
 }
 void serv_quit()  //监控服务器退出
 {
