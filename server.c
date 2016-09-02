@@ -20,6 +20,9 @@
 #define EPOLL_SIZE    1024   //监听的客户端的最大数目
 #define BUF_MAX     257     //读取缓存区最大字节 
 
+
+
+
 time_t timep;     //记录当前时间
 
 
@@ -741,15 +744,16 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
                    fgets(send_buf.chathistory,1000,fp);
                    send_buf.n=8;
                    int ret;
-                   sleep(1);
+                  // send_buf.len=sizeof(struct message);
                    if((ret=send(conn_fd,&send_buf,sizeof(struct message),0))<0)
                    {
                        printf("向客户端发送数据失败\n");
                        return;
                    }
-                   printf("ret=%d\n",ret);////////
-                   printf("%s",send_buf.chathistory);/////////
+                   
+                   
                }
+               fclose(fp);
 
            }
            
