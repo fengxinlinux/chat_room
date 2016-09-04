@@ -688,7 +688,6 @@ void send_message(struct message recv_buf,int conn_fd)   //向客户端发送信
            taolun[i].groupfd[j]=-1;
            break;
        }
-
        case 7777:  //查看讨论组成员
        {
            int i=send_buf.groupi,j=0,k=0;;
