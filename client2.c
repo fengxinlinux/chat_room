@@ -25,12 +25,22 @@
 #define  PORT  6666
 #define  EPOLL_SIZE 10       //监听数量
 
+#define NONE           "\e[0m"     //不加色，恢复终端颜色
+#define L_CYAN         "\e[1;36m"  //深淡蓝色
+#define L_PURPLE       "\e[1;35m"  //深紫色
+#define L_RED          "\e[1;31m"  //红色
+#define L_YELLOW       "\e[1;33m"  //黄色
+#define L_GREEN        "\e[1;32m"  //绿色
+
 
 
 GtkWidget* entry_username;  //记录登陆时文本框中的账号信息
 GtkWidget* entry_pwd;
 
 GtkWidget* dialog1,*window1;
+
+int groupi=0;  //记录群号
+char groupname[21];  //记录群名称
 
 int conn_fd;
 time_t timep;    //获取当前时间的变量
@@ -141,21 +151,21 @@ void zhuce_yes()       //是。注册回调函数
         
     }
     
-
-
-    if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+    int ret;
+     if((ret=send(conn_fd,&send_buf,sizeof(struct message),0))<0)
     {
         printf("服务器未响应\n");
         return;
     }
+
     if(recv(conn_fd,&recv_buf,recv_len,0)<0)
     {
         printf("从服务器接受数据失败\n");
         return;
     }
+
     if(recv_buf.n==-2)  //注册失败
     {
-
         GtkWidget* dialog;
         GtkWidget* label;
         GtkWidget* button;
@@ -180,7 +190,6 @@ void zhuce_yes()       //是。注册回调函数
     }
     if(recv_buf.n==22)   //注册成功
    {
-
        GtkWidget* dialog;
        GtkWidget* label;
        GtkWidget* button;
@@ -357,13 +366,13 @@ void denglu()  //登陆回调函数
     }
 
 
-    
-    
+   
     if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
     {
         printf("服务器未响应\n");
         return;
     }
+
     
     int recv_len=sizeof(struct message);
     if(recv(conn_fd,&recv_buf,recv_len,0)<0)
@@ -384,7 +393,7 @@ void denglu()  //登陆回调函数
 
         //向对话框中加入一个文本标签
         vbox=GTK_DIALOG(dialog)->vbox;
-        label=gtk_label_new("登陆失败，账号或密码错误");
+        label=gtk_label_new("登陆失败，账号信息错误或该账号已登陆");
         gtk_box_pack_start(GTK_BOX(vbox),label,TRUE,TRUE,30);
 
         //向对话框中加入一个按钮
@@ -422,8 +431,8 @@ void denglu()  //登陆回调函数
 
        gtk_widget_show_all(dialog);
        system("clear");  //清屏
-       system("clear");
-       system("clear");
+       printf(L_GREEN"欢迎使用聊天系统,输入help查看命令帮助"NONE);
+       printf("\n");
     
    }
 }
@@ -525,6 +534,8 @@ int  explain_buf(char* buf,char buflist[5][21])       //解析用户输入的命
         {
             buflist[i][j]='\0';
             p++;
+            while(*p==' ')
+            p++;
             i++;
             j=0;
         }
@@ -549,14 +560,16 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
     
         if(strcmp(send_buf.from,send_buf.to)==0)   
         {
-            printf("不能添加自己为好友\n");
+            printf(L_RED"不能添加自己为好友\n"NONE);
             return;
         }
+    
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            printf("服务器未响应\n");
+            printf(L_RED"服务器未响应\n"NONE);
             return;
         }
+        
     }
 
    else if(strcmp(buflist[0],"yes")==0)   //确认添加好友命令
@@ -564,9 +577,12 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         send_buf.n=33;
         strcpy(send_buf.from,from);
         strcpy(send_buf.to,to);
+        
+    
+
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            printf("服务器未响应\n");
+            printf(L_RED"服务器未响应\n"NONE);
             return;
         }
 
@@ -577,9 +593,10 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         strcpy(send_buf.from,from);
         strcpy(send_buf.to,to);
 
+    
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            printf("服务器未响应\n");
+            printf(L_RED"服务器未响应\n"NONE);
             return;
         }
     }
@@ -596,12 +613,103 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
         }
         else
         {
-            printf("未找到该命令\n");
+            printf(L_RED"未找到该命令\n"NONE);
             return;
         }
+
+    
         if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
         {
-            printf("服务器未响应\n");
+            printf(L_RED"服务器未响应\n"NONE);
+            return;
+        }
+    }
+    else if(strcmp(buflist[0],"delete")==0)    //删除好友
+    {
+        if(strlen(buflist[1])!=0)
+        {
+            strcpy(send_buf.to,buflist[1]);
+            strcpy(send_buf.from,username1);
+            send_buf.n=5;
+
+            
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf(L_RED"服务器未响应\n"NONE);
+                return;
+            }
+        }
+        else
+        {
+            printf(L_RED"命令格式错误，请重新输入\n"NONE);
+            return;
+        }
+    }
+    
+    else if(strcmp(buflist[0],"chat")==0)  //聊天
+    {
+        if(strcmp(buflist[1],"to")==0&&strlen(buflist[2])!=0&&strlen(buflist[3])!=0&&strlen(buflist[4])==0)  //私聊
+        {
+            send_buf.n=6;
+            strcpy(send_buf.to,buflist[2]);
+            strcpy(send_buf.chat,buflist[3]);
+            strcpy(send_buf.time,my_time());
+            strcpy(send_buf.from,username1);
+
+            if(strcmp(send_buf.to,username1)==0)  //不能对自己发送聊天消息
+            {
+                printf(L_RED"您不能对自己发送消息哦"NONE);
+                printf("\n");
+                return;
+            }
+
+            
+            
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf("服务器未响应\n");
+                return;
+            }
+            
+            printf(L_PURPLE"%s"NONE,send_buf.time);   //将自己的输入内容显示
+            printf(L_PURPLE"[私聊]我@%s:"NONE,send_buf.to);
+            printf(L_PURPLE"%s"NONE,send_buf.chat);
+            printf("\n");
+
+        }
+        else if(strcmp(buflist[1],"all")==0&&strlen(buflist[2])!=0&&strlen(buflist[3])==0)  //群聊
+        {
+            send_buf.n=7;
+            if(groupi==0)
+            {
+                printf(L_RED"您未加入任何群"NONE);
+                printf("\n");
+                return;
+            }
+            strcpy(send_buf.from,username1);
+            strcpy(send_buf.groupname,groupname);
+            strcpy(send_buf.chat,buflist[2]);
+            strcpy(send_buf.time,my_time());
+            send_buf.groupi=groupi;
+
+        
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf(L_RED"服务器未响应"NONE);
+                printf("\n");
+                return;
+            }
+
+            printf(L_PURPLE"%s"NONE,send_buf.time);
+            printf(L_PURPLE"[群聊]我@%s:"NONE,send_buf.groupname);
+            printf(L_PURPLE"%s"NONE,send_buf.chat);
+            printf("\n");
+
+        }
+       
+        else
+        {
+            printf(L_RED"未找到该命令\n"NONE);
             return;
         }
     }
@@ -611,9 +719,165 @@ void do_buf(char buflist[5][21],int conn_fd)   //执行用户命令
     {
         system("clear");
     }
+    else if(strcmp(buflist[0],"exit")==0&&strlen(buflist[1])==0)  //退出客户端
+    {
+        close(conn_fd);
+        printf(L_GREEN"退出聊天程序，欢迎下次使用"NONE);
+        printf("\n");
+        exit(1);
+        
+    }
+    else if(strcmp(buflist[0],"group")==0)    //讨论组
+    {
+        if(strcmp(buflist[1],"create")==0&&strlen(buflist[2])!=0&&strlen(buflist[3])==0)  //创建讨论组
+        {
+            if(groupi!=0)
+            {
+                printf(L_RED"您已加入一个讨论组，创建失败\n"NONE);
+                printf("\n");
+                return;
+            }
+            send_buf.n=77;
+            strcpy(send_buf.groupname,buflist[2]);
+            strcpy(send_buf.from,username1);
+
+            
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf(L_RED"服务器未响应\n"NONE);
+                return;
+            }
+        
+
+        }
+        else if(strcmp(buflist[1],"add")==0&&strlen(buflist[2])!=0&&strlen(buflist[3])==0)  //邀请好友加入讨论组
+        {
+            
+            if(groupi==0)
+            {
+                printf(L_RED"您未加入任何群"NONE);
+                printf("\n");
+                return;
+            }
+            send_buf.n=777;
+            send_buf.groupi=groupi;
+            strcpy(send_buf.from,username1);
+            strcpy(send_buf.to,buflist[2]);
+            strcpy(send_buf.groupname,groupname);
+
+            
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf(L_RED"服务器未响应\n"NONE);
+                return;
+            }
+            
+        }
+        else if(strcmp(buflist[1],"exit")==0&&strlen(buflist[2])==0)  //退出讨论组
+        {
+            if(groupi==0)
+            {
+                printf(L_RED"您未加入任何群"NONE);
+                printf("\n");
+                return;
+            }
+            send_buf.n=-7;
+            send_buf.groupi=groupi;
+
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf(L_RED"退出群失败"NONE);
+                printf("\n");
+                return;
+            }
+            else
+            {
+                printf(L_YELLOW"退出群成功"NONE);
+                printf("\n");
+                groupi=0;
+                groupname[0]='\0';
+                return;
+            }
+        }
+        else if(strcmp(buflist[1],"ls")==0&&strlen(buflist[2])==0)  //查看讨论组成员
+        {
+            if(groupi==0)
+            {
+                printf(L_RED"您未加入任何群"NONE);
+                printf("\n");
+                return;
+            }
+            send_buf.n=7777;
+            send_buf.groupi=groupi;
+
+    
+            if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+            {
+                printf(L_RED"查看群成员失败"NONE);
+                printf("\n");
+                return;
+            }
+        }
+        else
+        {
+            printf(L_RED"未找到该命令"NONE);
+            printf("\n");
+            return;
+        }
+
+    }
+    else if(strcmp(buflist[0],"history")==0&&strlen(buflist[1])!=0&&strlen(buflist[2])==0)  //查看与好友聊天记录
+    {
+    
+        send_buf.n=8;
+        strcpy(send_buf.from,username1);
+        strcpy(send_buf.to,buflist[1]);
+
+
+        if(send(conn_fd,&send_buf,sizeof(struct message),0)<0)
+        {
+            printf(L_RED"服务器未响应"NONE);
+            return;            
+        }
+
+        printf(L_YELLOW"与好友%s的聊天记录:"NONE,send_buf.to);
+        printf("\n");
+   
+    }
+    else if(strcmp(buflist[0],"help")==0&&strlen(buflist[1])==0)   //查看帮助命令
+    {
+        printf(L_YELLOW"命令格式如下:"NONE);
+        printf("\n");
+        printf(L_GREEN"查看所有好友: ls -a "NONE);
+        printf("\n");
+        printf(L_GREEN"查看在线好友：ls");
+        printf("\n");
+        printf(L_GREEN"添加好友: add  好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"删除好友：delete  好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"私聊：chat to 好友名称　内容"NONE);
+        printf("\n");
+        printf(L_GREEN"群聊：chat all  内容"NONE);
+        printf("\n");
+        printf(L_GREEN"创建群：group create 群名称"NONE);
+        printf("\n");
+        printf(L_GREEN"邀请好友进群：group add 好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"退出群(群主退出群会自动解散)：group exit"NONE);
+        printf("\n");
+        printf(L_GREEN"查看聊天记录：history 好友名称"NONE);
+        printf("\n");
+        printf(L_GREEN"查看帮助：help"NONE);
+        printf("\n");
+        printf(L_GREEN"清屏：clear"NONE);
+        printf("\n");
+        printf(L_GREEN"退出程序：exit"NONE);
+        printf("\n");
+    }
     else
     {
-        printf("未找到该命令\n");
+        printf(L_RED"未找到该命令\n"NONE);
         return;
     }
 
@@ -631,53 +895,153 @@ void do_recv(struct message recv_buf)    //执行处理从服务器发来的数�
         strcpy(username,recv_buf.from);
         strcpy(from,recv_buf.from);
         strcpy(to,recv_buf.to);
-        printf("%s请求添加您为好友，是否同意？yes/no.\n",username);
+        printf(L_YELLOW"用户:%s 请求添加您为好友，是否同意？yes/no."NONE,username);
+        printf("\n");
       
     }
     if(n==33)
     {
-        printf("添加好友成功\n");
+        printf(L_YELLOW"添加好友成功"NONE);
+        printf("\n");
     }
     if(n==-3)
     {
-        printf("好友不在线或对方拒绝添加您为好友\n");
+        printf(L_YELLOW"好友不在线或对方拒绝添加您为好友"NONE);
+        printf("\n");
     }
     if(n==4)  //显示所有好友
     {
         int i=0;
-        printf("所有好友:\n");
+        printf(L_YELLOW"所有好友:"NONE);
+        printf("\n");
         while(strlen(recv_buf.friendname[i])!=0)
         {
             printf("%s\n",recv_buf.friendname[i]);
             i++;
         }
+        printf("\n");
 
     }
     if(n==44) //显示在线好友
     {
         int i=0;
-        printf("在线好友:\n");
+        printf(L_YELLOW"在线好友:"NONE);
+        printf("\n");
         while(strlen(recv_buf.friendname[i])!=0)
         {
             printf("%s\n",recv_buf.friendname[i]);
             i++;        
         }
+        printf("\n");
     }
+    if(n==55)  //删除好友成功
+    {
+        printf(L_YELLOW"删除好友:%s　成功"NONE,recv_buf.to);
+        printf("\n");
+    }
+    if(n==-5)  //删除好友失败
+    {
+        printf(L_YELLOW"删除好友失败"NONE);
+        printf("\n");
+    }
+    if(n==6)   //私聊
+    {
+        printf(L_CYAN"%s"NONE,recv_buf.time);
+        printf(L_CYAN"[私聊]"NONE);
+        printf(L_CYAN"%s@我:"NONE,recv_buf.from);
+        printf(L_CYAN"%s"NONE,recv_buf.chat);
+        printf("\n");
+
+    }
+    if(n==-6)  //发送消息失败
+    {
+        printf(L_RED"发送消息失败,未找到该好友"NONE);
+        printf("\n");
+    }
+    if(n==7)   //群聊
+    {
+        printf(L_CYAN"%s"NONE,recv_buf.time);
+        printf(L_CYAN"[群聊]"NONE);
+        printf(L_CYAN"%s@%s:"NONE,recv_buf.from,recv_buf.groupname);
+        printf(L_CYAN"%s"NONE,recv_buf.chat);
+        printf("\n");
+    }
+    if(n==77)   //创建讨论组成功
+    {
+        printf(L_YELLOW"创建群:%s 成功"NONE,recv_buf.groupname);
+        printf("\n");
+        groupi=recv_buf.groupi;
+        strcpy(groupname,recv_buf.groupname);
+    }
+    if(n==-77)  //创建讨论组失败
+    {
+        printf(L_YELLOW"创建群:%s 失败"NONE,recv_buf.groupname);
+        printf("\n");
+    }
+    if(n==777)  //好友邀请加入讨论组
+    {
+        printf(L_YELLOW"好友:%s 邀请您加入群:%s"NONE,recv_buf.from,recv_buf.groupname);
+        printf("\n");
+        groupi=recv_buf.groupi;
+        strcpy(groupname,recv_buf.groupname);
+    }
+    if(n==-777)  //邀请好友加入讨论组失败
+    {
+        printf(L_YELLOW"邀请好友:%s 进群:%s 失败,对方不是您好友或者不在线"NONE,recv_buf.to,recv_buf.groupname);
+        printf("\n");
+    }
+    if(n==7777)  //查看讨论组成员
+    {
+        int i=0;
+        printf(L_GREEN"群%s中的成员:"NONE,groupname);
+        printf("\n");
+        while(strlen(recv_buf.friendname[i])!=0)
+        {
+            printf(L_PURPLE"%s"NONE,recv_buf.friendname[i]);
+            printf("\n");
+            i++;
+        }
+    }
+    if(n==-7777)  //群主退出。群解散
+    {
+        printf(L_RED"由于群主退出，群%s已解散"NONE,groupname);
+        printf("\n");
+        groupi=0;
+        groupname[0]='\0';
+    }
+    if(n==8)   //查看聊天记录
+    {
+        printf(L_PURPLE"%s"NONE,recv_buf.chathistory); 
+
+    }
+    if(n==-8) //查看聊天记录失败
+    {
+        printf(L_RED"查看聊天记录失败，对方并不是您好友"NONE);
+        printf("\n");
+        return;
+    }
+
 
 }
 void recv_pthread()   //接收服务器数据线程
 {
     struct message send_buf,recv_buf;
-    
+    int ret; 
     memset(&send_buf,0,sizeof(struct message));
     memset(&recv_buf,0,sizeof(struct message));
 
     while(1)
     {
-        if(recv(conn_fd,&recv_buf,sizeof(struct message),0)<0)
+
+        if((ret=recv(conn_fd,&recv_buf,sizeof(struct message),0))==0)
         {
             printf("从服务器接收数据失败\n");
-            continue;    
+            exit(1);
+        }
+        else if(ret<0)
+        {
+            printf("从服务器接受数据失败\n");
+            continue;
         }
         do_recv(recv_buf);
 
@@ -700,9 +1064,8 @@ void serv_quit()  //监控服务器退出
         epoll_wait(epollfd,events,1,-1);
         if(events[0].events&EPOLLRDHUP)
         {
-            printf("服务器退出，程序退出\n");
-            //shutdown(conn_fd,2);
-          //  close(conn_fd);
+            printf(L_RED"服务器退出，程序退出\n"NONE);
+        
             exit(1);
         }
     }
@@ -826,7 +1189,7 @@ int main(int argc,char** argv)
         while(j!=101&&(buf[j++]=getchar())!='\n');
         if(j==101)
         {
-           printf("输入的字符过长,请重新输入\n");
+           printf(L_RED"输入的字符过长,请重新输入\n"NONE);
            continue;   
         }
         else
@@ -834,7 +1197,7 @@ int main(int argc,char** argv)
             buf[--j]='\0';
             if(explain_buf(buf,buflist)==0)
             {
-                printf("输入的命令格式不正确，请重新输入\n");
+                printf(L_RED"输入的命令格式不正确，请重新输入\n"NONE);
                 continue;                    
             }
             do_buf(buflist,conn_fd);                    
